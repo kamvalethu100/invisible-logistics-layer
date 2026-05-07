@@ -1,0 +1,189 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Navigation, DollarSign, List, Bell, Loader2 } from 'lucide-react';
+import { useSocket } from '@/hooks/useSocket';
+import api from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+
+interface JobOffer {
+  id: string;
+  pickup_address: string;
+  dropoff_address: string;
+  price: number;
+}
+
+export default function DriverDashboard() {
+  const socket = useSocket();
+  const [offer, setOffer] = useState<JobOffer | null>(null);
+  const [activeJob, setActiveJob] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [delRes, statsRes] = await Promise.all([
+          api.get('/api/deliveries'),
+          api.get('/api/deliveries/stats')
+        ]);
+        const active = delRes.data.find((d: any) => d.status !== 'pending' && d.status !== 'delivered' && d.status !== 'cancelled');
+        if (active) setActiveJob(active);
+        setStats(statsRes.data);
+      } catch (err) {
+        console.error('Failed to fetch driver data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('job_offer', (job: JobOffer) => {
+      console.log('New job offer received', job);
+      setOffer(job);
+    });
+
+    socket.on('status_update', (update: any) => {
+      console.log('Status update received', update);
+      if (update.status === 'delivered') {
+        setActiveJob(null);
+      } else {
+        setActiveJob((prev: any) => prev ? { ...prev, status: update.status } : null);
+      }
+    });
+
+    // Mock Location Updates Interval
+    const locationInterval = setInterval(() => {
+      if (socket.connected) {
+        const mockLat = -33.9249 + (Math.random() - 0.5) * 0.01;
+        const mockLng = 18.4241 + (Math.random() - 0.5) * 0.01;
+        socket.emit('update_location', { lat: mockLat, lng: mockLng });
+        console.log('Sent location update:', { mockLat, mockLng });
+      }
+    }, 10000);
+
+    return () => {
+      socket.off('job_offer');
+      socket.off('status_update');
+      clearInterval(locationInterval);
+    };
+  }, [socket]);
+
+  const acceptJob = async () => {
+    if (!offer) return;
+    setLoading(true);
+    try {
+      await api.patch(`/api/deliveries/${offer.id}/accept`);
+      setActiveJob(offer);
+      setOffer(null);
+    } catch (err) {
+      console.error('Failed to accept job', err);
+      alert('Failed to accept job. It might have been taken.');
+      setOffer(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatus = async (status: string) => {
+    if (!activeJob) return;
+    setLoading(true);
+    try {
+      await api.patch(`/api/deliveries/${activeJob.id}/status`, { status });
+      setActiveJob((prev: any) => ({ ...prev, status }));
+      if (status === 'delivered') setActiveJob(null);
+    } catch (err) {
+      console.error('Failed to update status', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <header className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
+          <p className="text-gray-500 text-sm">You are currently online.</p>
+        </div>
+      </header>
+
+      {/* Stats */}
+      <div className="bg-green-600 rounded-2xl p-6 text-white shadow-lg shadow-green-200">
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-green-100 text-sm font-medium uppercase tracking-wider">Earnings Today</p>
+          <DollarSign className="w-6 h-6 text-green-200" />
+        </div>
+        <p className="text-4xl font-bold">R {(stats?.total_earnings || 0).toFixed(2)}</p>
+        <div className="mt-4 flex gap-4 text-sm text-green-100">
+          <p><span className="font-bold">{stats?.completed_jobs || 0}</span> Jobs completed</p>
+        </div>
+      </div>
+
+      {/* Active Job */}
+      {activeJob && (
+        <div className="bg-white rounded-xl shadow-sm border-2 border-green-500 overflow-hidden">
+          <div className="bg-green-50 p-4 border-b border-green-100 flex justify-between items-center">
+            <h2 className="font-semibold text-green-800">Active Job</h2>
+            <span className="text-xs font-bold text-green-600 uppercase">{activeJob.status}</span>
+          </div>
+          <div className="p-6">
+            <p className="text-sm font-medium mb-2">To: {activeJob.dropoff_address}</p>
+            <div className="flex gap-2">
+              {activeJob.status === 'assigned' && (
+                <Button onClick={() => updateStatus('picked_up')} disabled={loading} className="flex-1">
+                  Mark as Picked Up
+                </Button>
+              )}
+              {activeJob.status === 'picked_up' && (
+                <Button onClick={() => updateStatus('delivered')} disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700">
+                  Mark as Delivered
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Job Offer */}
+      {offer && !activeJob && (
+        <div className="bg-white rounded-xl shadow-sm border-2 border-blue-500 overflow-hidden animate-bounce-slow">
+          <div className="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-center">
+            <h2 className="font-semibold text-blue-800 flex items-center">
+              <span className="animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-600"></span>
+              New Job Offer
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-tight">Pickup</p>
+                <p className="text-sm font-medium">{offer.pickup_address}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-bold tracking-tight">Drop-off</p>
+                <p className="text-sm font-medium">{offer.dropoff_address}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={acceptJob} disabled={loading} className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold">
+                {loading ? <Loader2 className="animate-spin w-5 h-5" /> : `Accept Job (R ${offer.price.toFixed(2)})`}
+              </Button>
+              <Button onClick={() => setOffer(null)} variant="outline" className="px-6">Decline</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!offer && !activeJob && (
+        <div className="bg-white p-12 rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
+          Waiting for job offers...
+        </div>
+      )}
+    </div>
+  );
+}

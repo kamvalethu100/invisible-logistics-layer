@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key-change-me}
+      - DATABASE_PATH=/app/data/database.sqlite
+    restart: always
+
+volumes:
+  data:
