@@ -58,6 +58,10 @@ export async function deliveryRoutes(fastify, options) {
 
   // Get delivery stats
   fastify.get('/stats', async (request, reply) => {
+    const { category } = request.query;
+    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const filterCategory = category || user.data_category;
+
     let stats = {};
     if (request.user.role === 'business') {
       stats = await db.get(`
@@ -67,8 +71,8 @@ export async function deliveryRoutes(fastify, options) {
           SUM(CASE WHEN status != 'delivered' AND status != 'cancelled' THEN 1 ELSE 0 END) as active_deliveries,
           SUM(price) as total_spent
         FROM deliveries 
-        WHERE business_id = ?`, 
-        [request.user.id]
+        WHERE business_id = ? AND data_category = ?`, 
+        [request.user.id, filterCategory]
       );
     } else if (request.user.role === 'driver') {
       stats = await db.get(`
@@ -77,11 +81,11 @@ export async function deliveryRoutes(fastify, options) {
           SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as completed_jobs,
           SUM(CASE WHEN status = 'delivered' THEN price ELSE 0 END) as total_earnings
         FROM deliveries 
-        WHERE driver_id = ?`,
-        [request.user.id]
+        WHERE driver_id = ? AND data_category = ?`,
+        [request.user.id, filterCategory]
       );
     }
-    return stats;
+    return { ...stats, data_category: filterCategory };
   });
 
   // Create delivery
@@ -92,6 +96,9 @@ export async function deliveryRoutes(fastify, options) {
 
     try {
       const data = deliveryCreateSchema.parse(request.body);
+      const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+      const data_category = user.data_category;
+
       const distance = getDistance(data.pickup_lat, data.pickup_lng, data.dropoff_lat, data.dropoff_lng);
       const price = await calculatePrice(db, distance, data.package_size, data.urgency);
       
@@ -101,18 +108,18 @@ export async function deliveryRoutes(fastify, options) {
       await db.run(
         `INSERT INTO deliveries (
           id, business_id, status, pickup_address, pickup_lat, pickup_lng, 
-          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price, data_category
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id, request.user.id, status, data.pickup_address, data.pickup_lat, data.pickup_lng,
-          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price
+          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price, data_category
         ]
       );
 
       const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
       
       // Trigger matching
-      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng);
+      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, 5, null, data_category);
       if (nearbyDrivers.length > 0) {
         // For MVP, we'll notify all nearby drivers (broadcast) or just the closest one.
         // Let's notify the top 3 closest drivers.
@@ -129,9 +136,12 @@ export async function deliveryRoutes(fastify, options) {
 
   // List deliveries
   fastify.get('/', async (request, reply) => {
-    const { status } = request.query;
-    let query = 'SELECT * FROM deliveries WHERE 1=1';
-    let params = [];
+    const { status, category } = request.query;
+    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const filterCategory = category || user.data_category;
+
+    let query = 'SELECT * FROM deliveries WHERE data_category = ?';
+    let params = [filterCategory];
 
     if (request.user.role === 'business') {
       query += ' AND business_id = ?';
@@ -152,8 +162,12 @@ export async function deliveryRoutes(fastify, options) {
 
   // History endpoint (delivered or cancelled)
   fastify.get('/history', async (request, reply) => {
-    let query = 'SELECT * FROM deliveries WHERE status IN ("delivered", "cancelled")';
-    let params = [];
+    const { category } = request.query;
+    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const filterCategory = category || user.data_category;
+
+    let query = 'SELECT * FROM deliveries WHERE status IN ("delivered", "cancelled") AND data_category = ?';
+    let params = [filterCategory];
 
     if (request.user.role === 'business') {
       query += ' AND business_id = ?';

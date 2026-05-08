@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MapPin, Package, Zap, ChevronRight, Loader2 } from 'lucide-react';
+import { MapPin, Package, Zap, ChevronRight, Loader2, Shield } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 
 export default function NewDelivery() {
   const [pickupAddress, setPickupAddress] = useState('');
@@ -14,6 +16,9 @@ export default function NewDelivery() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { user } = useAuth();
+  
+  const userCategory = (user as any)?.data_category || 'test';
 
   const calculatePrice = () => {
     const baseFees = { small: 5, medium: 10, large: 20 };
@@ -58,10 +63,26 @@ export default function NewDelivery() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Request a Delivery</h1>
-        <p className="text-gray-500">Enter the details below to get an instant quote.</p>
+      <header className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Request a Delivery</h1>
+          <p className="text-gray-500">Enter the details below to get an instant quote.</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Creating as</p>
+          <DataCategoryBadge category={userCategory} />
+        </div>
       </header>
+
+      {userCategory === 'real' && (
+        <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-start gap-3">
+          <Shield className="w-5 h-5 text-green-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-green-900">Verified Production Request</p>
+            <p className="text-xs text-green-700">This delivery will be visible to real drivers and subject to production audits.</p>
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
 

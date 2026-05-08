@@ -1,16 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Navigation, DollarSign, List, Bell, Loader2 } from 'lucide-react';
+import { Navigation, DollarSign, List, Bell, Loader2, Shield } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
+import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
+import { cn } from '@/lib/utils';
 
 interface JobOffer {
   id: string;
   pickup_address: string;
   dropoff_address: string;
   price: number;
+  data_category?: DataCategory;
 }
 
 export default function DriverDashboard() {
@@ -19,25 +23,28 @@ export default function DriverDashboard() {
   const [activeJob, setActiveJob] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<DataCategory>('real');
+
+  const fetchData = async (currentCategory: DataCategory) => {
+    setLoading(true);
+    try {
+      const [delRes, statsRes] = await Promise.all([
+        api.get(`/api/deliveries?category=${currentCategory}`),
+        api.get(`/api/deliveries/stats?category=${currentCategory}`)
+      ]);
+      const active = delRes.data.find((d: any) => d.status !== 'pending' && d.status !== 'delivered' && d.status !== 'cancelled');
+      if (active) setActiveJob(active);
+      setStats(statsRes.data);
+    } catch (err) {
+      console.error('Failed to fetch driver data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [delRes, statsRes] = await Promise.all([
-          api.get('/api/deliveries'),
-          api.get('/api/deliveries/stats')
-        ]);
-        const active = delRes.data.find((d: any) => d.status !== 'pending' && d.status !== 'delivered' && d.status !== 'cancelled');
-        if (active) setActiveJob(active);
-        setStats(statsRes.data);
-      } catch (err) {
-        console.error('Failed to fetch driver data', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    fetchData(category);
+  }, [category]);
 
   useEffect(() => {
     if (!socket) return;
@@ -105,22 +112,48 @@ export default function DriverDashboard() {
 
   return (
     <div className="space-y-6">
-      <header className="flex justify-between items-center">
+      <DataIntegrityBanner activeCategory={category} className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6" />
+
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
           <p className="text-gray-500 text-sm">You are currently online.</p>
         </div>
+
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+          {(['real', 'test', 'simulated'] as DataCategory[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-bold transition-all capitalize",
+                category === cat 
+                  ? "bg-green-600 text-white shadow-sm" 
+                  : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* Stats */}
-      <div className="bg-green-600 rounded-2xl p-6 text-white shadow-lg shadow-green-200">
+      <div className={cn(
+        "rounded-2xl p-6 text-white shadow-lg transition-colors",
+        category === 'real' ? "bg-green-600 shadow-green-200" : "bg-amber-600 shadow-amber-200"
+      )}>
         <div className="flex justify-between items-center mb-4">
-          <p className="text-green-100 text-sm font-medium uppercase tracking-wider">Earnings Today</p>
+          <p className="text-green-100 text-sm font-medium uppercase tracking-wider flex items-center gap-2">
+            Earnings Today 
+            {category === 'real' && <Shield className="w-4 h-4 text-green-200" />}
+          </p>
           <DollarSign className="w-6 h-6 text-green-200" />
         </div>
         <p className="text-4xl font-bold">R {(stats?.total_earnings || 0).toFixed(2)}</p>
         <div className="mt-4 flex gap-4 text-sm text-green-100">
           <p><span className="font-bold">{stats?.completed_jobs || 0}</span> Jobs completed</p>
+          <DataCategoryBadge category={category} className="bg-white/20 border-white/30 text-white" />
         </div>
       </div>
 

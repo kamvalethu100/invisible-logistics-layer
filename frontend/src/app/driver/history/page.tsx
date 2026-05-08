@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { History, Search, Filter, MapPin, Calendar, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import api from '@/lib/api';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
+import { cn } from '@/lib/utils';
 
 interface Delivery {
   id: string;
@@ -11,16 +13,20 @@ interface Delivery {
   dropoff_address: string;
   price: number;
   created_at: string;
+  data_category?: DataCategory;
 }
 
 export default function DriverHistory() {
   const [history, setHistory] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<DataCategory | 'all'>('all');
 
   useEffect(() => {
     const fetchHistory = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/api/deliveries/history');
+        const url = category === 'all' ? '/api/deliveries/history' : `/api/deliveries/history?category=${category}`;
+        const res = await api.get(url);
         setHistory(res.data);
       } catch (err) {
         console.error('Failed to fetch history', err);
@@ -29,7 +35,7 @@ export default function DriverHistory() {
       }
     };
     fetchHistory();
-  }, []);
+  }, [category]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-ZA', {
@@ -43,9 +49,28 @@ export default function DriverHistory() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Job History</h1>
-        <p className="text-gray-500">Review your completed and cancelled jobs.</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Job History</h1>
+          <p className="text-gray-500">Review your completed and cancelled jobs.</p>
+        </div>
+
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+          {(['all', 'real', 'test', 'simulated'] as (DataCategory | 'all')[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all capitalize",
+                category === cat 
+                  ? "bg-green-600 text-white shadow-sm" 
+                  : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* History List */}
@@ -54,13 +79,16 @@ export default function DriverHistory() {
           {loading ? (
             <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-gray-400" /></div>
           ) : history.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">No job history found.</div>
+            <div className="p-12 text-center text-gray-500">No job history found for {category === 'all' ? 'any category' : category}.</div>
           ) : (
             history.map((item) => (
               <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="font-bold text-gray-900">Job #{item.id.slice(0, 8)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-gray-900">Job #{item.id.slice(0, 8)}</p>
+                      <DataCategoryBadge category={item.data_category || 'test'} />
+                    </div>
                     <p className="text-xs text-gray-500">{formatDate(item.created_at)}</p>
                   </div>
                   <div className="text-right">

@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Package, Clock, CheckCircle, MapPin, Loader2 } from 'lucide-react';
+import { Package, Clock, CheckCircle, MapPin, Loader2, Shield, Info } from 'lucide-react';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
+import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
+import { cn } from '@/lib/utils';
 
 import Link from 'next/link';
 
@@ -13,19 +16,22 @@ interface Delivery {
   pickup_address: string;
   dropoff_address: string;
   price: number;
+  data_category?: DataCategory;
 }
 
 export default function BusinessDashboard() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<DataCategory>('real');
   const socket = useSocket();
 
-  const fetchData = async () => {
+  const fetchData = async (currentCategory: DataCategory) => {
+    setLoading(true);
     try {
       const [delRes, statsRes] = await Promise.all([
-        api.get('/api/deliveries'),
-        api.get('/api/deliveries/stats')
+        api.get(`/api/deliveries?category=${currentCategory}`),
+        api.get(`/api/deliveries/stats?category=${currentCategory}`)
       ]);
       setDeliveries(delRes.data);
       setStats(statsRes.data);
@@ -37,8 +43,8 @@ export default function BusinessDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(category);
+  }, [category]);
 
   useEffect(() => {
     if (!socket) return;
@@ -73,23 +79,59 @@ export default function BusinessDashboard() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Business Dashboard</h1>
-        <p className="text-gray-500">Welcome back! Here's an overview of your deliveries.</p>
+      <DataIntegrityBanner activeCategory={category} className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6" />
+      
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Business Dashboard</h1>
+          <p className="text-gray-500">Welcome back! Here's an overview of your deliveries.</p>
+        </div>
+        
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+          {(['real', 'test', 'simulated'] as DataCategory[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-bold transition-all capitalize",
+                category === cat 
+                  ? "bg-blue-600 text-white shadow-sm" 
+                  : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
+
+      {/* Data Integrity Info Card */}
+      {category === 'real' && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+          <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-blue-900">Verified Production Mode</p>
+            <p className="text-xs text-blue-700">All data shown below is verified production activity. These metrics are used for official growth and performance reporting.</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
           <div className="bg-blue-100 p-3 rounded-lg mr-4">
             <Package className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Active Deliveries</p>
+            <p className="text-sm font-medium text-gray-500 flex items-center gap-1">
+              Active Deliveries
+              <Info className="w-3 h-3 cursor-help text-gray-400" />
+            </p>
             <p className="text-2xl font-bold text-gray-900">{stats?.active_deliveries || 0}</p>
           </div>
+          {category === 'real' && <div className="absolute top-0 right-0 p-1"><Shield className="w-4 h-4 text-green-500 opacity-20" /></div>}
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
           <div className="bg-amber-100 p-3 rounded-lg mr-4">
             <Clock className="w-6 h-6 text-amber-600" />
           </div>
@@ -97,8 +139,9 @@ export default function BusinessDashboard() {
             <p className="text-sm font-medium text-gray-500">Total Requests</p>
             <p className="text-2xl font-bold text-gray-900">{stats?.total_requests || 0}</p>
           </div>
+          {category === 'real' && <div className="absolute top-0 right-0 p-1"><Shield className="w-4 h-4 text-green-500 opacity-20" /></div>}
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
           <div className="bg-green-100 p-3 rounded-lg mr-4">
             <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
@@ -106,20 +149,24 @@ export default function BusinessDashboard() {
             <p className="text-sm font-medium text-gray-500">Total Spent</p>
             <p className="text-2xl font-bold text-gray-900">R {(stats?.total_spent || 0).toFixed(2)}</p>
           </div>
+          {category === 'real' && <div className="absolute top-0 right-0 p-1"><Shield className="w-4 h-4 text-green-500 opacity-20" /></div>}
         </div>
       </div>
 
       {/* Recent Deliveries */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="font-semibold text-gray-900">Active Deliveries</h2>
-          <button onClick={fetchData} className="text-xs text-blue-600 hover:underline">Refresh</button>
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+            Active Deliveries
+            <DataCategoryBadge category={category} />
+          </h2>
+          <button onClick={() => fetchData(category)} className="text-xs text-blue-600 hover:underline">Refresh</button>
         </div>
         <div className="divide-y divide-gray-100">
           {loading ? (
             <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-gray-400" /></div>
           ) : deliveries.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">No deliveries found.</div>
+            <div className="p-12 text-center text-gray-500">No {category} deliveries found.</div>
           ) : (
             deliveries.map((delivery) => (
               <Link 
@@ -132,7 +179,10 @@ export default function BusinessDashboard() {
                     <MapPin className="w-5 h-5 text-gray-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Order #{delivery.id.slice(0, 8)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">Order #{delivery.id.slice(0, 8)}</p>
+                      <DataCategoryBadge category={delivery.data_category || category} />
+                    </div>
                     <p className="text-sm text-gray-500">To: {delivery.dropoff_address}</p>
                   </div>
                 </div>

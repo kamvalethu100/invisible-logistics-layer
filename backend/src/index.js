@@ -45,8 +45,8 @@ const start = async () => {
     fastify.register(authRoutes, { prefix: '/api/auth' });
     fastify.register(deliveryRoutes, { prefix: '/api/deliveries' });
 
-    await fastify.listen({ port: 3000, host: '0.0.0.0' });
-    console.log('Server listening on http://0.0.0.0:3000');
+    await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
+    console.log(`Server listening on http://0.0.0.0:${fastify.server.address().port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

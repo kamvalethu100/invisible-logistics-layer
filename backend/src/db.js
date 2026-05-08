@@ -22,6 +22,7 @@ export async function initDb() {
       phone TEXT,
       vehicle_type TEXT,
       status TEXT,
+      data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -39,12 +40,25 @@ export async function initDb() {
       package_size TEXT NOT NULL,
       urgency TEXT NOT NULL,
       price REAL NOT NULL,
+      data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES users (id),
       FOREIGN KEY (driver_id) REFERENCES users (id)
     );
   `);
+
+  // Add data_category column if it doesn't exist (for existing databases)
+  try {
+    await db.exec("ALTER TABLE users ADD COLUMN data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated'))");
+  } catch (e) {
+    // Column might already exist
+  }
+  try {
+    await db.exec("ALTER TABLE deliveries ADD COLUMN data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated'))");
+  } catch (e) {
+    // Column might already exist
+  }
 
   return db;
 }

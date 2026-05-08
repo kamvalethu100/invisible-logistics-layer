@@ -1,39 +1,46 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Loader2, MapPin } from 'lucide-react';
+import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Loader2, MapPin, Shield } from 'lucide-react';
 import api from '@/lib/api';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
+import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
+import { cn } from '@/lib/utils';
 
 interface EarningItem {
   id: string;
   amount: number;
   date: string;
   destination: string;
+  data_category?: DataCategory;
 }
 
 export default function DriverEarnings() {
   const [earnings, setEarnings] = useState<any>(null);
   const [history, setHistory] = useState<EarningItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<DataCategory>('real');
 
   useEffect(() => {
-    const fetchEarnings = async () => {
+    const fetchEarnings = async (currentCategory: DataCategory) => {
+      setLoading(true);
       try {
         const [statsRes, historyRes] = await Promise.all([
-          api.get('/api/deliveries/stats'),
-          api.get('/api/deliveries/history')
+          api.get(`/api/deliveries/stats?category=${currentCategory}`),
+          api.get(`/api/deliveries/history?category=${currentCategory}`)
         ]);
         
         setHistory(historyRes.data.map((item: any) => ({
           id: item.id,
           amount: item.price,
           date: item.updated_at || item.created_at,
-          destination: item.dropoff_address
+          destination: item.dropoff_address,
+          data_category: item.data_category
         })));
         
         setEarnings({
           total: statsRes.data.total_earnings || 0,
-          today: statsRes.data.total_earnings || 0, // Fallback since no today_earnings yet
+          today: statsRes.data.total_earnings || 0, // Fallback
           week: statsRes.data.total_earnings || 0,
         });
       } catch (err) {
@@ -42,35 +49,65 @@ export default function DriverEarnings() {
         setLoading(false);
       }
     };
-    fetchEarnings();
-  }, []);
+    fetchEarnings(category);
+  }, [category]);
 
   if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-gray-400" /></div>;
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-gray-900">Earnings</h1>
-        <p className="text-gray-500 text-sm">Track your daily and weekly performance.</p>
+      <DataIntegrityBanner activeCategory={category} className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6" />
+
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Earnings</h1>
+          <p className="text-gray-500 text-sm">Track your daily and weekly performance.</p>
+        </div>
+
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+          {(['real', 'test', 'simulated'] as DataCategory[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-bold transition-all capitalize",
+                category === cat 
+                  ? "bg-green-600 text-white shadow-sm" 
+                  : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </header>
 
       {/* Hero Stats */}
-      <div className="bg-green-600 rounded-3xl p-8 text-white shadow-xl shadow-green-100">
-        <p className="text-green-100 text-sm font-medium uppercase tracking-widest mb-2">Total Balance</p>
+      <div className={cn(
+        "rounded-3xl p-8 text-white shadow-xl transition-colors relative overflow-hidden",
+        category === 'real' ? "bg-green-600 shadow-green-100" : "bg-amber-600 shadow-amber-100"
+      )}>
+        <p className="text-green-100 text-sm font-medium uppercase tracking-widest mb-2 flex items-center gap-2">
+          Total Balance 
+          {category === 'real' && <Shield className="w-4 h-4 text-green-200" />}
+        </p>
         <div className="flex items-baseline gap-1">
            <span className="text-2xl font-medium text-green-200">R</span>
            <span className="text-5xl font-bold">{(earnings?.total || 0).toFixed(2)}</span>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-green-500/30">
+        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-white/20">
           <div>
-            <p className="text-green-200 text-xs uppercase font-bold">Today</p>
+            <p className="text-white/70 text-xs uppercase font-bold">Today</p>
             <p className="text-xl font-bold">R {(earnings?.today || 0).toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-green-200 text-xs uppercase font-bold">This Week</p>
+            <p className="text-white/70 text-xs uppercase font-bold">This Week</p>
             <p className="text-xl font-bold">R {(earnings?.week || 0).toFixed(2)}</p>
           </div>
+        </div>
+        <div className="absolute top-4 right-4">
+           <DataCategoryBadge category={category} className="bg-white/20 border-white/30 text-white" />
         </div>
       </div>
 
@@ -114,7 +151,10 @@ export default function DriverEarnings() {
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900 text-sm">R {item.amount.toFixed(2)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-gray-900 text-sm">R {item.amount.toFixed(2)}</p>
+                      <DataCategoryBadge category={item.data_category || category} />
+                    </div>
                     <p className="text-xs text-gray-500 flex items-center mt-0.5">
                        <MapPin className="w-3 h-3 mr-1" />
                        {item.destination}

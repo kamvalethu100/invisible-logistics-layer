@@ -28,14 +28,15 @@ export async function initSockets(fastify) {
   });
 
   io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.user.id} (${socket.user.role})`);
+    console.log(`User connected: ${socket.user.id} (${socket.user.role}) [Category: ${socket.user.data_category}]`);
 
     if (socket.user.role === 'driver') {
       onlineDrivers.set(socket.user.id, {
         socketId: socket.id,
         lat: null,
         lng: null,
-        status: 'online'
+        status: 'online',
+        data_category: socket.user.data_category
       });
       
       // Update driver status in DB
@@ -52,6 +53,9 @@ export async function initSockets(fastify) {
         driverData.lat = lat;
         driverData.lng = lng;
         onlineDrivers.set(socket.user.id, driverData);
+        
+        // Telemetry logging with category for verifiability
+        console.log(`[Telemetry] Driver ${socket.user.id} (${driverData.data_category}): ${lat}, ${lng}`);
       }
 
       // If driver is currently on a delivery, broadcast to the delivery room
@@ -94,12 +98,13 @@ export async function updateDriverStatus(fastify, driverId, status) {
 }
 
 // Function to find nearby drivers
-export function findNearbyDrivers(lat, lng, radiusKm = 5, vehicleType = null) {
+export function findNearbyDrivers(lat, lng, radiusKm = 5, vehicleType = null, category = 'real') {
   const nearby = [];
   
   for (const [driverId, data] of onlineDrivers.entries()) {
     if (data.lat === null || data.lng === null) continue;
     if (data.status !== 'online') continue;
+    if (data.data_category !== category) continue; // Strict separation
 
     const distance = getDistance(lat, lng, data.lat, data.lng);
     if (distance <= radiusKm) {

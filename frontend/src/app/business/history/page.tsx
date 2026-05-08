@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { History, Search, Filter, MapPin, Calendar, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
+import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
+import { cn } from '@/lib/utils';
 
 interface Delivery {
   id: string;
@@ -11,16 +13,20 @@ interface Delivery {
   dropoff_address: string;
   price: number;
   created_at: string;
+  data_category?: DataCategory;
 }
 
 export default function BusinessHistory() {
   const [history, setHistory] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<DataCategory | 'all'>('all');
 
   useEffect(() => {
     const fetchHistory = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/api/deliveries/history');
+        const url = category === 'all' ? '/api/deliveries/history' : `/api/deliveries/history?category=${category}`;
+        const res = await api.get(url);
         setHistory(res.data);
       } catch (err) {
         console.error('Failed to fetch history', err);
@@ -29,7 +35,7 @@ export default function BusinessHistory() {
       }
     };
     fetchHistory();
-  }, []);
+  }, [category]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-ZA', {
@@ -49,7 +55,7 @@ export default function BusinessHistory() {
       </header>
 
       {/* Search and Filter */}
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input 
@@ -58,10 +64,22 @@ export default function BusinessHistory() {
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <button className="px-4 py-2 border border-gray-200 rounded-lg flex items-center text-gray-600 hover:bg-gray-50">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </button>
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg border border-gray-200">
+          {(['all', 'real', 'test', 'simulated'] as (DataCategory | 'all')[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all capitalize",
+                category === cat 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* History List */}
@@ -71,6 +89,7 @@ export default function BusinessHistory() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Delivery Info</th>
+                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Category</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Date</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Amount</th>
                 <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase">Status</th>
@@ -79,14 +98,14 @@ export default function BusinessHistory() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin inline-block text-gray-400" />
                   </td>
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                    No history found.
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                    No history found for {category === 'all' ? 'any category' : category}.
                   </td>
                 </tr>
               ) : (
@@ -98,6 +117,9 @@ export default function BusinessHistory() {
                         <MapPin className="w-3 h-3 mr-1" />
                         {item.dropoff_address}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <DataCategoryBadge category={item.data_category || 'test'} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center text-sm text-gray-600">
