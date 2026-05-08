@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
 
 // In-memory store for active drivers
 // Map<userId, { socketId, lat, lng, status }>
@@ -75,9 +76,31 @@ export async function initSockets(fastify) {
       console.log(`User ${socket.user.id} tracking delivery ${deliveryId}`);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`User disconnected: ${socket.user.id}`);
       if (socket.user.role === 'driver') {
+        const driverData = onlineDrivers.get(socket.user.id);
+        
+        // Production Observability: Track disconnects during active deliveries
+        const activeDelivery = await fastify.db.get(
+          'SELECT id, data_category FROM deliveries WHERE driver_id = ? AND status IN ("assigned", "en_route_to_pickup", "picked_up", "en_route_to_delivery")',
+          [socket.user.id]
+        );
+
+        if (activeDelivery) {
+          await fastify.db.run(
+            'INSERT INTO failures (id, type, delivery_id, reason, data_category, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              uuidv4(), 
+              'gps_signal_drop', 
+              activeDelivery.id, 
+              'driver_disconnected', 
+              activeDelivery.data_category, 
+              JSON.stringify({ driver_id: socket.user.id, last_lat: driverData?.lat, last_lng: driverData?.lng })
+            ]
+          );
+        }
+
         onlineDrivers.delete(socket.user.id);
         fastify.db.run('UPDATE users SET status = "offline" WHERE id = ?', [socket.user.id]);
       }

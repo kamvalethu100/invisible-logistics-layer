@@ -42,11 +42,27 @@ export async function initDb() {
       price REAL NOT NULL,
       data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated')),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      accepted_at DATETIME,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (business_id) REFERENCES users (id),
       FOREIGN KEY (driver_id) REFERENCES users (id)
     );
+
+    CREATE TABLE IF NOT EXISTS failures (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      delivery_id TEXT,
+      reason TEXT,
+      data_category TEXT NOT NULL CHECK(data_category IN ('real', 'test', 'simulated')),
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      metadata TEXT
+    );
   `);
+
+  // Migrations for existing DB
+  try {
+    await db.exec("ALTER TABLE deliveries ADD COLUMN accepted_at DATETIME");
+  } catch (e) {}
 
   // Add data_category column if it doesn't exist (for existing databases)
   try {

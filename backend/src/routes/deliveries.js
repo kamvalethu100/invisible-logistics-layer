@@ -51,10 +51,57 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+async function logFailure(db, type, deliveryId, reason, dataCategory, metadata = null) {
+  await db.run(
+    'INSERT INTO failures (id, type, delivery_id, reason, data_category, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+    [uuidv4(), type, deliveryId, reason, dataCategory, metadata ? JSON.stringify(metadata) : null]
+  );
+}
+
 export async function deliveryRoutes(fastify, options) {
   const db = fastify.db;
 
   fastify.addHook('preHandler', fastify.authenticate);
+
+  // Health endpoint for production observability
+  fastify.get('/health', async (request, reply) => {
+    const { category = 'real' } = request.query;
+    
+    const stats = await db.get(`
+      SELECT 
+        COUNT(*) as total_requests,
+        SUM(CASE WHEN status = 'assigned' OR status = 'delivered' OR status = 'picked_up' THEN 1 ELSE 0 END) as successful_dispatches,
+        SUM(CASE WHEN accepted_at IS NOT NULL THEN (strftime('%s', accepted_at) - strftime('%s', created_at)) ELSE 0 END) / 
+        NULLIF(SUM(CASE WHEN accepted_at IS NOT NULL THEN 1 ELSE 0 END), 0) as avg_dispatch_latency_sec
+      FROM deliveries 
+      WHERE data_category = ? AND created_at >= datetime('now', '-24 hours')`,
+      [category]
+    );
+
+    const failures = await db.all(`
+      SELECT type, COUNT(*) as count 
+      FROM failures 
+      WHERE data_category = ? AND timestamp >= datetime('now', '-24 hours')
+      GROUP BY type`,
+      [category]
+    );
+
+    const dispatchSuccessRate = stats.total_requests > 0 
+      ? (stats.successful_dispatches / stats.total_requests) * 100 
+      : 100;
+
+    return {
+      status: 'healthy',
+      category,
+      timeframe: 'last_24_hours',
+      metrics: {
+        dispatch_success_rate: Math.round(dispatchSuccessRate * 100) / 100 + '%',
+        avg_dispatch_latency_sec: Math.round((stats.avg_dispatch_latency_sec || 0) * 100) / 100,
+        total_requests: stats.total_requests,
+        failures_by_type: failures.reduce((acc, f) => ({ ...acc, [f.type]: f.count }), {})
+      }
+    };
+  });
 
   // Get delivery stats
   fastify.get('/stats', async (request, reply) => {
@@ -126,6 +173,9 @@ export async function deliveryRoutes(fastify, options) {
         nearbyDrivers.slice(0, 3).forEach(driver => {
           fastify.io.to(driver.socketId).emit('job_offer', delivery);
         });
+      } else {
+        // Log failure: no drivers found
+        await logFailure(db, 'matching_failure', id, 'no_drivers_nearby', data_category, { lat: data.pickup_lat, lng: data.pickup_lng });
       }
 
       return delivery;
@@ -222,7 +272,7 @@ export async function deliveryRoutes(fastify, options) {
 
     // Assign driver and update status
     await db.run(
-      'UPDATE deliveries SET driver_id = ?, status = "assigned", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE deliveries SET driver_id = ?, status = "assigned", updated_at = CURRENT_TIMESTAMP, accepted_at = CURRENT_TIMESTAMP WHERE id = ?',
       [request.user.id, id]
     );
 
@@ -244,9 +294,9 @@ export async function deliveryRoutes(fastify, options) {
     }
 
     const { id } = request.params;
-    const { status } = request.body;
+    const { status, reason } = request.body;
 
-    const allowedStatuses = ['en_route_to_pickup', 'picked_up', 'en_route_to_delivery', 'delivered'];
+    const allowedStatuses = ['en_route_to_pickup', 'picked_up', 'en_route_to_delivery', 'delivered', 'cancelled'];
     if (!allowedStatuses.includes(status)) {
       return reply.status(400).send({ error: 'Invalid status transition' });
     }
@@ -265,6 +315,12 @@ export async function deliveryRoutes(fastify, options) {
       [status, id]
     );
 
+    // If cancelled, log as failure
+    if (status === 'cancelled') {
+      await logFailure(db, 'delivery_cancelled', id, reason || 'driver_cancelled', delivery.data_category, { driver_id: request.user.id });
+      await updateDriverStatus(fastify, request.user.id, 'online');
+    }
+
     // If delivered, update driver back to online
     if (status === 'delivered') {
       await updateDriverStatus(fastify, request.user.id, 'online');
@@ -273,6 +329,42 @@ export async function deliveryRoutes(fastify, options) {
     const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
     
     // Notify business via socket
+    fastify.io.to(`delivery_${id}`).emit('status_update', updatedDelivery);
+
+    return updatedDelivery;
+  });
+
+  // Cancel delivery (Business or Admin)
+  fastify.post('/:id/cancel', async (request, reply) => {
+    const { id } = request.params;
+    const { reason } = request.body;
+
+    const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+    if (!delivery) {
+      return reply.status(404).send({ error: 'Delivery not found' });
+    }
+
+    if (request.user.role === 'business' && delivery.business_id !== request.user.id) {
+      return reply.status(403).send({ error: 'Unauthorized' });
+    }
+
+    if (delivery.status === 'delivered' || delivery.status === 'cancelled') {
+      return reply.status(400).send({ error: 'Cannot cancel a completed or already cancelled delivery' });
+    }
+
+    await db.run(
+      'UPDATE deliveries SET status = "cancelled", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [id]
+    );
+
+    // If driver was assigned, make them online again
+    if (delivery.driver_id) {
+      await updateDriverStatus(fastify, delivery.driver_id, 'online');
+    }
+
+    await logFailure(db, 'delivery_cancelled', id, reason || 'business_cancelled', delivery.data_category, { cancelled_by: request.user.id });
+
+    const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
     fastify.io.to(`delivery_${id}`).emit('status_update', updatedDelivery);
 
     return updatedDelivery;

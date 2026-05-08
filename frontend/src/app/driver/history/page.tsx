@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { History, Search, Filter, MapPin, Calendar, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { cn } from '@/lib/utils';
 
@@ -17,9 +18,16 @@ interface Delivery {
 }
 
 export default function DriverHistory() {
+  const { user } = useAuth();
   const [history, setHistory] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<DataCategory | 'all'>('all');
+
+  useEffect(() => {
+    if (user?.data_category) {
+      setCategory(user.data_category as DataCategory);
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchHistory = async () => {

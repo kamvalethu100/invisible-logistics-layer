@@ -6,6 +6,7 @@ import { authRoutes } from './routes/auth.js';
 import { deliveryRoutes } from './routes/deliveries.js';
 import { initSockets } from './sockets.js';
 import dotenv from 'dotenv';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -29,6 +30,29 @@ fastify.decorate('authenticate', async (request, reply) => {
     await request.jwtVerify();
   } catch (err) {
     reply.send(err);
+  }
+});
+
+// Production Observability: API Latency Spike Tracking
+fastify.addHook('onResponse', async (request, reply) => {
+  const duration = reply.elapsedTime; // Fastify measure time by default if requested
+  if (duration > 500) { // Threshold: 500ms
+    const db = fastify.db;
+    const category = request.user?.data_category || 'real';
+    try {
+      await db.run(
+        'INSERT INTO failures (id, type, reason, data_category, metadata) VALUES (?, ?, ?, ?, ?)',
+        [
+          uuidv4(), 
+          'api_latency_spike', 
+          `${request.method} ${request.url}`, 
+          category, 
+          JSON.stringify({ duration_ms: Math.round(duration), user_id: request.user?.id })
+        ]
+      );
+    } catch (e) {
+      // Don't crash if logging fails
+    }
   }
 });
 

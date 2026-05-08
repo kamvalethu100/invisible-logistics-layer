@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Package, Clock, CheckCircle, MapPin, Loader2, Shield, Info } from 'lucide-react';
+import { Package, Clock, CheckCircle, MapPin, Loader2, Shield, Info, AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/hooks/useAuth';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
+import { IssueReportModal } from '@/components/ui/IssueReportModal';
 import { cn } from '@/lib/utils';
 
 import Link from 'next/link';
@@ -20,11 +22,19 @@ interface Delivery {
 }
 
 export default function BusinessDashboard() {
+  const { user } = useAuth();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<DataCategory>('real');
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const socket = useSocket();
+
+  useEffect(() => {
+    if (user?.data_category) {
+      setCategory(user.data_category as DataCategory);
+    }
+  }, [user]);
 
   const fetchData = async (currentCategory: DataCategory) => {
     setLoading(true);
@@ -83,7 +93,17 @@ export default function BusinessDashboard() {
       
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Business Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            Business Dashboard
+            <button 
+              onClick={() => setIsIssueModalOpen(true)}
+              className="text-xs font-medium text-gray-400 hover:text-amber-600 flex items-center gap-1 transition-colors px-2 py-1 rounded-full hover:bg-amber-50"
+              title="Report an Issue"
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              Report Issue
+            </button>
+          </h1>
           <p className="text-gray-500">Welcome back! Here's an overview of your deliveries.</p>
         </div>
         
@@ -197,6 +217,13 @@ export default function BusinessDashboard() {
           )}
         </div>
       </div>
+      
+      <IssueReportModal 
+        isOpen={isIssueModalOpen} 
+        onClose={() => setIsIssueModalOpen(false)} 
+        category={category} 
+        context="Business Dashboard"
+      />
     </div>
   );
 }

@@ -81,10 +81,35 @@ export default function DeliveryDetails() {
         <ArrowLeft className="w-4 h-4 mr-2" /> Back
       </Button>
 
-      <header className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Order #{delivery.id.slice(0, 8)}</h1>
-        <p className="text-sm text-gray-500">Real-time tracking and status</p>
+      <header className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Order #{delivery.id.slice(0, 8)}</h1>
+          <p className="text-sm text-gray-500">Real-time tracking and status</p>
+        </div>
+        <div className="text-right">
+           <p className="text-xs font-bold text-gray-400 uppercase">Price</p>
+           <p className="text-lg font-bold text-blue-600">R {delivery.price.toFixed(2)}</p>
+        </div>
       </header>
+
+      {/* Tracking Map Placeholder */}
+      <div className="bg-slate-200 aspect-[16/9] rounded-2xl shadow-inner relative overflow-hidden flex items-center justify-center border-4 border-white shadow-xl">
+        <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/18.4241,-33.9249,12/800x450?access_token=mock')] bg-cover opacity-50 grayscale"></div>
+        <div className="z-10 text-center p-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white">
+           <MapPin className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-bounce" />
+           <p className="font-bold text-slate-900">Live Map View</p>
+           {driverLocation ? (
+             <p className="text-xs text-slate-500 mt-1">Driver is currently in transit</p>
+           ) : (
+             <p className="text-xs text-slate-500 mt-1">Waiting for signal...</p>
+           )}
+        </div>
+        
+        {/* Animated Path Simulation */}
+        <div className="absolute inset-0 pointer-events-none">
+           <div className="absolute top-1/2 left-1/4 w-1/2 h-1 border-b-2 border-dashed border-blue-400 opacity-30"></div>
+        </div>
+      </div>
 
       {/* Progress Tracker */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">

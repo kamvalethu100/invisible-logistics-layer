@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Navigation, DollarSign, List, Bell, Loader2, Shield } from 'lucide-react';
+import { Navigation, DollarSign, List, Bell, Loader2, Shield, AlertCircle, CheckCircle2, User, MapPin } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
+import { IssueReportModal } from '@/components/ui/IssueReportModal';
 import { cn } from '@/lib/utils';
 
 interface JobOffer {
@@ -18,12 +20,22 @@ interface JobOffer {
 }
 
 export default function DriverDashboard() {
+  const { user } = useAuth();
   const socket = useSocket();
   const [offer, setOffer] = useState<JobOffer | null>(null);
   const [activeJob, setActiveJob] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<DataCategory>('real');
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [showPodScreen, setShowPodScreen] = useState(false);
+  const [recipientName, setRecipientName] = useState('');
+
+  useEffect(() => {
+    if (user?.data_category) {
+      setCategory(user.data_category as DataCategory);
+    }
+  }, [user]);
 
   const fetchData = async (currentCategory: DataCategory) => {
     setLoading(true);
@@ -96,13 +108,19 @@ export default function DriverDashboard() {
     }
   };
 
-  const updateStatus = async (status: string) => {
+  const updateStatus = async (status: string, metadata?: any) => {
     if (!activeJob) return;
     setLoading(true);
     try {
-      await api.patch(`/api/deliveries/${activeJob.id}/status`, { status });
+      await api.patch(`/api/deliveries/${activeJob.id}/status`, { status, metadata });
       setActiveJob((prev: any) => ({ ...prev, status }));
-      if (status === 'delivered') setActiveJob(null);
+      if (status === 'delivered') {
+        setActiveJob(null);
+        setShowPodScreen(false);
+        setRecipientName('');
+        // Refresh stats
+        fetchData(category);
+      }
     } catch (err) {
       console.error('Failed to update status', err);
     } finally {
@@ -116,7 +134,16 @@ export default function DriverDashboard() {
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            Driver Dashboard
+            <button 
+              onClick={() => setIsIssueModalOpen(true)}
+              className="text-xs font-medium text-gray-400 hover:text-amber-600 flex items-center gap-1 transition-colors px-2 py-1 rounded-full hover:bg-amber-50"
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              Report Issue
+            </button>
+          </h1>
           <p className="text-gray-500 text-sm">You are currently online.</p>
         </div>
 
@@ -161,23 +188,84 @@ export default function DriverDashboard() {
       {activeJob && (
         <div className="bg-white rounded-xl shadow-sm border-2 border-green-500 overflow-hidden">
           <div className="bg-green-50 p-4 border-b border-green-100 flex justify-between items-center">
-            <h2 className="font-semibold text-green-800">Active Job</h2>
-            <span className="text-xs font-bold text-green-600 uppercase">{activeJob.status}</span>
+            <h2 className="font-semibold text-green-800 flex items-center gap-2">
+              <Navigation className="w-4 h-4" />
+              Active Job
+            </h2>
+            <span className="text-xs font-bold text-green-600 uppercase bg-white px-2 py-0.5 rounded-full border border-green-200">
+              {activeJob.status.replace(/_/g, ' ')}
+            </span>
           </div>
+          
           <div className="p-6">
-            <p className="text-sm font-medium mb-2">To: {activeJob.dropoff_address}</p>
-            <div className="flex gap-2">
-              {activeJob.status === 'assigned' && (
-                <Button onClick={() => updateStatus('picked_up')} disabled={loading} className="flex-1">
-                  Mark as Picked Up
-                </Button>
-              )}
-              {activeJob.status === 'picked_up' && (
-                <Button onClick={() => updateStatus('delivered')} disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700">
-                  Mark as Delivered
-                </Button>
-              )}
-            </div>
+            {!showPodScreen ? (
+              <>
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center mt-0.5 mr-3 flex-shrink-0">
+                       <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Pickup From</p>
+                      <p className="text-sm font-medium text-gray-900 leading-tight">{activeJob.pickup_address}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 mr-3 flex-shrink-0">
+                       <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Deliver To</p>
+                      <p className="text-sm font-bold text-gray-900 leading-tight">{activeJob.dropoff_address}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {activeJob.status === 'assigned' && (
+                    <Button onClick={() => updateStatus('picked_up')} disabled={loading} className="flex-1 h-12 text-lg">
+                      Mark as Picked Up
+                    </Button>
+                  )}
+                  {activeJob.status === 'picked_up' && (
+                    <Button onClick={() => setShowPodScreen(true)} disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700 h-12 text-lg">
+                      Finish Delivery
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2 text-center">
+                   <CheckCircle2 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                   <h3 className="font-bold text-blue-900">Proof of Delivery</h3>
+                   <p className="text-xs text-blue-700">Confirm you've reached {activeJob.dropoff_address}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Recipient Name</label>
+                  <input 
+                    type="text"
+                    required
+                    value={recipientName}
+                    onChange={(e) => setRecipientName(e.target.value)}
+                    placeholder="Enter name of person who received package"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setShowPodScreen(false)} className="flex-1">Back</Button>
+                  <Button 
+                    onClick={() => updateStatus('delivered', { recipient_name: recipientName })} 
+                    disabled={loading || !recipientName.trim()} 
+                    className="flex-1 bg-green-600 hover:bg-green-700 font-bold"
+                  >
+                    {loading ? <Loader2 className="animate-spin w-5 h-5" /> : 'Confirm Delivery'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -217,6 +305,13 @@ export default function DriverDashboard() {
           Waiting for job offers...
         </div>
       )}
+
+      <IssueReportModal 
+        isOpen={isIssueModalOpen} 
+        onClose={() => setIsIssueModalOpen(false)} 
+        category={category} 
+        context="Driver Dashboard"
+      />
     </div>
   );
 }

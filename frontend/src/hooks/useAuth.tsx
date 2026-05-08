@@ -9,6 +9,7 @@ interface User {
   email: string;
   role: 'business' | 'driver' | 'admin';
   name: string;
+  data_category: 'real' | 'test' | 'simulated';
 }
 
 interface AuthContextType {
