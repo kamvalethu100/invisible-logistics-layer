@@ -4,6 +4,9 @@ import fastifyCors from '@fastify/cors';
 import { initDb } from './db.js';
 import { authRoutes } from './routes/auth.js';
 import { deliveryRoutes } from './routes/deliveries.js';
+import { leadRoutes } from './routes/leads.js';
+import { verificationRoutes } from './routes/verification.js';
+import { paymentRoutes } from './routes/payments.js';
 import { initSockets } from './sockets.js';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
@@ -68,6 +71,9 @@ const start = async () => {
 
     fastify.register(authRoutes, { prefix: '/api/auth' });
     fastify.register(deliveryRoutes, { prefix: '/api/deliveries' });
+    fastify.register(leadRoutes, { prefix: '/api/leads' });
+    fastify.register(verificationRoutes, { prefix: '/api/verification' });
+    fastify.register(paymentRoutes, { prefix: '/api/payments' });
 
     await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
     console.log(`Server listening on http://0.0.0.0:${fastify.server.address().port}`);

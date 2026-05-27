@@ -10,18 +10,23 @@ const deliveryCreateSchema = z.object({
   dropoff_lat: z.number(),
   dropoff_lng: z.number(),
   package_size: z.enum(['small', 'medium', 'large']),
-  urgency: z.enum(['standard', 'express'])
+  urgency: z.enum(['standard', 'express']),
+  insurance_opt_in: z.boolean().optional().default(false)
 });
 
-// Refined pricing logic for Sprint 4
-async function calculatePrice(db, distance, packageSize, urgency) {
+// Refined pricing logic for Sprint 4 - Categorized Isolation & Multi-Region
+async function calculatePrice(db, distance, packageSize, urgency, dataCategory = 'real', countryCode = 'ZA', insuranceOptIn = false) {
   const baseFees = { small: 5, medium: 10, large: 20 };
   const ratePerKm = 1.5;
+  const largeItemSurcharge = 30; // R30 surcharge for Large items
+  const insurancePremium = 10;   // Flat R10 insurance protection
   
-  // Calculate surge based on supply/demand
-  const pendingDeliveries = await db.get('SELECT COUNT(*) as count FROM deliveries WHERE status = "pending"');
+  // Calculate surge based on supply/demand within the specific data category AND country
+  const pendingDeliveries = await db.get('SELECT COUNT(*) as count FROM deliveries WHERE status = "pending" AND data_category = ? AND country_code = ?', [dataCategory, countryCode]);
   const pendingCount = pendingDeliveries.count || 0;
-  const onlineDriversCount = Array.from(onlineDrivers.values()).filter(d => d.status === 'online').length;
+  const onlineDriversCount = Array.from(onlineDrivers.values()).filter(d => 
+    d.status === 'online' && d.data_category === dataCategory && d.country_code === countryCode
+  ).length;
   
   let surgeMultiplier = 1.0;
   if (onlineDriversCount > 0) {
@@ -34,7 +39,18 @@ async function calculatePrice(db, distance, packageSize, urgency) {
 
   const urgencyMultiplier = urgency === 'express' ? 1.5 : 1.0;
   
-  const price = (baseFees[packageSize] + (distance * ratePerKm)) * surgeMultiplier * urgencyMultiplier;
+  let price = (baseFees[packageSize] + (distance * ratePerKm)) * surgeMultiplier * urgencyMultiplier;
+  
+  if (packageSize === 'large') {
+    price += largeItemSurcharge;
+  }
+  
+  if (insuranceOptIn) {
+    price += insurancePremium;
+  }
+  
+  console.log(`[Pricing] Calculated price for ${dataCategory} delivery in ${countryCode}: ${price} (Distance: ${distance.toFixed(2)}km, Surge: ${surgeMultiplier}x, Package: ${packageSize}, Insurance: ${insuranceOptIn})`);
+  
   return Math.round(price * 100) / 100; // Round to 2 decimal places
 }
 
@@ -55,6 +71,13 @@ async function logFailure(db, type, deliveryId, reason, dataCategory, metadata =
   await db.run(
     'INSERT INTO failures (id, type, delivery_id, reason, data_category, metadata) VALUES (?, ?, ?, ?, ?, ?)',
     [uuidv4(), type, deliveryId, reason, dataCategory, metadata ? JSON.stringify(metadata) : null]
+  );
+}
+
+async function logEvent(db, type, userId, deliveryId, dataCategory, metadata = null) {
+  await db.run(
+    'INSERT INTO events (id, type, user_id, delivery_id, data_category, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+    [uuidv4(), type, userId, deliveryId, dataCategory, metadata ? JSON.stringify(metadata) : null]
   );
 }
 
@@ -105,9 +128,10 @@ export async function deliveryRoutes(fastify, options) {
 
   // Get delivery stats
   fastify.get('/stats', async (request, reply) => {
-    const { category } = request.query;
-    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const { category, region } = request.query;
+    const user = await db.get('SELECT data_category, region FROM users WHERE id = ?', [request.user.id]);
     const filterCategory = category || user.data_category;
+    const filterRegion = region || user.region;
 
     let stats = {};
     if (request.user.role === 'business') {
@@ -118,8 +142,8 @@ export async function deliveryRoutes(fastify, options) {
           SUM(CASE WHEN status != 'delivered' AND status != 'cancelled' THEN 1 ELSE 0 END) as active_deliveries,
           SUM(price) as total_spent
         FROM deliveries 
-        WHERE business_id = ? AND data_category = ?`, 
-        [request.user.id, filterCategory]
+        WHERE business_id = ? AND data_category = ? AND region = ?`, 
+        [request.user.id, filterCategory, filterRegion]
       );
     } else if (request.user.role === 'driver') {
       stats = await db.get(`
@@ -128,11 +152,11 @@ export async function deliveryRoutes(fastify, options) {
           SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as completed_jobs,
           SUM(CASE WHEN status = 'delivered' THEN price ELSE 0 END) as total_earnings
         FROM deliveries 
-        WHERE driver_id = ? AND data_category = ?`,
-        [request.user.id, filterCategory]
+        WHERE driver_id = ? AND data_category = ? AND region = ?`,
+        [request.user.id, filterCategory, filterRegion]
       );
     }
-    return { ...stats, data_category: filterCategory };
+    return { ...stats, data_category: filterCategory, region: filterRegion };
   });
 
   // Create delivery
@@ -143,11 +167,29 @@ export async function deliveryRoutes(fastify, options) {
 
     try {
       const data = deliveryCreateSchema.parse(request.body);
-      const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+      const user = await db.get('SELECT data_category, country_code, currency_code, region, verification_status FROM users WHERE id = ?', [request.user.id]);
+      
+      // Growth Constraint: Unverified limited to 1 delivery
+      if (user.verification_status !== 'VERIFIED') {
+        const deliveryCount = await db.get('SELECT COUNT(*) as count FROM deliveries WHERE business_id = ?', [request.user.id]);
+        if (deliveryCount.count >= 1) {
+          return reply.status(403).send({ error: 'Unverified businesses are limited to 1 test delivery. Please complete KYB verification.' });
+        }
+        
+        // Growth Constraint: No access to Express jobs for unverified
+        if (data.urgency === 'express') {
+            return reply.status(403).send({ error: 'Express deliveries are only available to verified businesses.' });
+        }
+      }
+
       const data_category = user.data_category;
+      const country_code = user.country_code;
+      const currency_code = user.currency_code;
+      const region = user.region;
 
       const distance = getDistance(data.pickup_lat, data.pickup_lng, data.dropoff_lat, data.dropoff_lng);
-      const price = await calculatePrice(db, distance, data.package_size, data.urgency);
+      const price = await calculatePrice(db, distance, data.package_size, data.urgency, data_category, country_code, data.insurance_opt_in);
+      const insurance_premium = data.insurance_opt_in ? 10 : 0;
       
       const id = uuidv4();
       const status = 'pending';
@@ -155,18 +197,18 @@ export async function deliveryRoutes(fastify, options) {
       await db.run(
         `INSERT INTO deliveries (
           id, business_id, status, pickup_address, pickup_lat, pickup_lng, 
-          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price, data_category
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price, data_category, country_code, currency_code, region, insurance_opt_in, insurance_premium
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id, request.user.id, status, data.pickup_address, data.pickup_lat, data.pickup_lng,
-          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price, data_category
+          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price, data_category, country_code, currency_code, region, data.insurance_opt_in ? 1 : 0, insurance_premium
         ]
       );
 
       const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
       
       // Trigger matching
-      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, 5, null, data_category);
+      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, 5, null, data_category, country_code);
       if (nearbyDrivers.length > 0) {
         // For MVP, we'll notify all nearby drivers (broadcast) or just the closest one.
         // Let's notify the top 3 closest drivers.
@@ -186,12 +228,13 @@ export async function deliveryRoutes(fastify, options) {
 
   // List deliveries
   fastify.get('/', async (request, reply) => {
-    const { status, category } = request.query;
-    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const { status, category, region } = request.query;
+    const user = await db.get('SELECT data_category, region FROM users WHERE id = ?', [request.user.id]);
     const filterCategory = category || user.data_category;
+    const filterRegion = region || user.region;
 
-    let query = 'SELECT * FROM deliveries WHERE data_category = ?';
-    let params = [filterCategory];
+    let query = 'SELECT * FROM deliveries WHERE data_category = ? AND region = ?';
+    let params = [filterCategory, filterRegion];
 
     if (request.user.role === 'business') {
       query += ' AND business_id = ?';
@@ -212,12 +255,13 @@ export async function deliveryRoutes(fastify, options) {
 
   // History endpoint (delivered or cancelled)
   fastify.get('/history', async (request, reply) => {
-    const { category } = request.query;
-    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [request.user.id]);
+    const { category, region } = request.query;
+    const user = await db.get('SELECT data_category, region FROM users WHERE id = ?', [request.user.id]);
     const filterCategory = category || user.data_category;
+    const filterRegion = region || user.region;
 
-    let query = 'SELECT * FROM deliveries WHERE status IN ("delivered", "cancelled") AND data_category = ?';
-    let params = [filterCategory];
+    let query = 'SELECT * FROM deliveries WHERE status IN ("delivered", "cancelled") AND data_category = ? AND region = ?';
+    let params = [filterCategory, filterRegion];
 
     if (request.user.role === 'business') {
       query += ' AND business_id = ?';
@@ -259,6 +303,11 @@ export async function deliveryRoutes(fastify, options) {
       return reply.status(403).send({ error: 'Only drivers can accept deliveries' });
     }
 
+    const driver = await db.get('SELECT verification_status FROM users WHERE id = ?', [request.user.id]);
+    if (driver.verification_status !== 'VERIFIED') {
+        return reply.status(403).send({ error: 'Only verified drivers can accept jobs. Please complete KYC verification.' });
+    }
+
     const { id } = request.params;
     const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
 
@@ -281,8 +330,19 @@ export async function deliveryRoutes(fastify, options) {
 
     const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
     
+    // Persistent log
+    await logEvent(db, 'job_accepted', request.user.id, id, updatedDelivery.data_category, {
+        price: updatedDelivery.price,
+        currency: updatedDelivery.currency_code
+    });
+
     // Notify business via socket
     fastify.io.to(`delivery_${id}`).emit('status_update', updatedDelivery);
+    fastify.io.to(`delivery_${id}`).emit('job_accepted', {
+        delivery_id: id,
+        driver_id: request.user.id,
+        status: 'assigned'
+    });
 
     return updatedDelivery;
   });
@@ -324,6 +384,29 @@ export async function deliveryRoutes(fastify, options) {
     // If delivered, update driver back to online
     if (status === 'delivered') {
       await updateDriverStatus(fastify, request.user.id, 'online');
+      
+      // Referral Logic: Trigger on first verified delivery
+      const business = await db.get('SELECT id, referred_by, verification_status, data_category FROM users WHERE id = ?', [delivery.business_id]);
+      if (business && business.referred_by && business.verification_status === 'VERIFIED' && business.data_category === 'real') {
+          const completedCount = await db.get('SELECT COUNT(*) as count FROM deliveries WHERE business_id = ? AND status = "delivered"', [delivery.business_id]);
+          if (completedCount.count === 1) {
+              // This is the first delivery! Credit the referrer.
+              const creditAmount = 100;
+              await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [creditAmount, business.referred_by]);
+              
+              await db.run(
+                  'INSERT INTO referral_credits (id, referrer_id, referred_id, amount, status) VALUES (?, ?, ?, ?, ?)',
+                  [uuidv4(), business.referred_by, business.id, creditAmount, 'COMPLETED']
+              );
+              
+              await logEvent(db, 'referral_reward_paid', business.referred_by, id, 'real', {
+                  referred_user_id: business.id,
+                  amount: creditAmount
+              });
+              
+              console.log(`[Referral] Paid ${creditAmount} to referrer ${business.referred_by} for user ${business.id}`);
+          }
+      }
     }
 
     const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
