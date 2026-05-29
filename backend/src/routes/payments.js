@@ -85,6 +85,12 @@ export async function paymentRoutes(fastify, options) {
             return reply.status(403).send({ error: 'Only verified drivers can receive payouts' });
         }
 
+        // Check sufficient balance for payout
+        const userWithBalance = await db.get('SELECT balance FROM users WHERE id = ?', [request.user.id]);
+        if (userWithBalance.balance < data.amount) {
+            return reply.status(402).send({ error: 'Insufficient balance for payout', current_balance: userWithBalance.balance });
+        }
+
         // Tax Compliance Check
         const compliance = await taxCompliance.checkCompliance(user, db);
         if (!compliance.compliant) {
@@ -118,6 +124,10 @@ export async function paymentRoutes(fastify, options) {
                 dataCategory: user.data_category
             });
         }
+
+        // Deduct balance immediately
+        await db.run('UPDATE users SET balance = balance - ? WHERE id = ?', [data.amount, request.user.id]);
+        console.log(`[Revenue] Deducted ${data.amount} from driver ${request.user.id} for payout ${payoutId}`);
 
         await db.run(
             `INSERT INTO payments (id, user_id, amount, currency, status, provider, type, data_category, metadata) 
@@ -178,6 +188,9 @@ export async function paymentRoutes(fastify, options) {
             if (user.data_category === 'real') {
                 await db.run('UPDATE users SET is_premium = 1 WHERE id = ?', [payment.user_id]);
             }
+        } else if (payment.type === 'TOPUP') {
+            await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [payment.amount, payment.user_id]);
+            console.log(`[Balance] Credited ${payment.amount} to user ${payment.user_id} via M-Pesa STK`);
         }
     } else {
         await db.run('UPDATE payments SET status = "FAILED", metadata = ? WHERE id = ?', [JSON.stringify(Body.stkCallback), paymentId]);
@@ -215,6 +228,12 @@ export async function paymentRoutes(fastify, options) {
           await db.run('UPDATE payments SET status = "COMPLETED", provider_tx_id = ? WHERE id = ?', [Result.TransactionID, payoutId]);
       } else {
           await db.run('UPDATE payments SET status = "FAILED", metadata = ? WHERE id = ?', [JSON.stringify(Result), payoutId]);
+          
+          // Refund user balance on failed payout
+          const metadata = JSON.parse(payment.metadata || '{}');
+          const grossAmount = metadata.gross_amount || Math.abs(payment.amount);
+          await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [grossAmount, payment.user_id]);
+          console.log(`[Revenue] Refunded ${grossAmount} to user ${payment.user_id} due to failed payout ${payoutId}`);
       }
 
       return { status: 'success' };
@@ -250,6 +269,9 @@ export async function paymentRoutes(fastify, options) {
                   if (user.data_category === 'real') {
                       await db.run('UPDATE users SET is_premium = 1 WHERE id = ?', [payment.user_id]);
                   }
+              } else if (payment.type === 'TOPUP') {
+                  await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [payment.amount, payment.user_id]);
+                  console.log(`[Balance] Credited ${payment.amount} to user ${payment.user_id} via Paystack`);
               }
           }
       }

@@ -189,10 +189,37 @@ export async function deliveryRoutes(fastify, options) {
 
       const distance = getDistance(data.pickup_lat, data.pickup_lng, data.dropoff_lat, data.dropoff_lng);
       const price = await calculatePrice(db, distance, data.package_size, data.urgency, data_category, country_code, data.insurance_opt_in);
+      
+      // Revenue Flow Hardening: Check and deduct balance
+      if (user.balance < price) {
+        return reply.status(402).send({ 
+          error: 'Insufficient balance', 
+          required: price, 
+          current: user.balance,
+          message: 'Please top up your account to create this delivery.' 
+        });
+      }
+
       const insurance_premium = data.insurance_opt_in ? 10 : 0;
       
       const id = uuidv4();
       const status = 'pending';
+
+      // Deduct balance immediately with atomicity check to prevent over-drafting
+      const deductionResult = await db.run(
+        'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?', 
+        [price, request.user.id, price]
+      );
+
+      if (deductionResult.changes === 0) {
+        return reply.status(402).send({ 
+          error: 'Insufficient balance', 
+          required: price,
+          message: 'Balance may have changed during processing. Please ensure you have enough funds.' 
+        });
+      }
+
+      console.log(`[Revenue] Atomic deduction of ${price} from business ${request.user.id} for delivery ${id}`);
 
       await db.run(
         `INSERT INTO deliveries (
@@ -319,11 +346,15 @@ export async function deliveryRoutes(fastify, options) {
       return reply.status(400).send({ error: 'Delivery is no longer available' });
     }
 
-    // Assign driver and update status
-    await db.run(
-      'UPDATE deliveries SET driver_id = ?, status = "assigned", updated_at = CURRENT_TIMESTAMP, accepted_at = CURRENT_TIMESTAMP WHERE id = ?',
+    // Assign driver and update status atomically to prevent race conditions
+    const acceptResult = await db.run(
+      'UPDATE deliveries SET driver_id = ?, status = "assigned", updated_at = CURRENT_TIMESTAMP, accepted_at = CURRENT_TIMESTAMP WHERE id = ? AND status = "pending"',
       [request.user.id, id]
     );
+
+    if (acceptResult.changes === 0) {
+      return reply.status(400).send({ error: 'Delivery is no longer available' });
+    }
 
     // Update driver to busy
     await updateDriverStatus(fastify, request.user.id, 'busy');
@@ -370,21 +401,35 @@ export async function deliveryRoutes(fastify, options) {
       return reply.status(403).send({ error: 'You are not the assigned driver for this delivery' });
     }
 
-    await db.run(
-      'UPDATE deliveries SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [status, id]
+    const result = await db.run(
+      'UPDATE deliveries SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != ?',
+      [status, id, status]
     );
 
-    // If cancelled, log as failure
+    if (result.changes === 0) {
+      // If already in this status, just return the delivery without side effects
+      return await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+    }
+
+    // If cancelled, log as failure and refund business
     if (status === 'cancelled') {
       await logFailure(db, 'delivery_cancelled', id, reason || 'driver_cancelled', delivery.data_category, { driver_id: request.user.id });
       await updateDriverStatus(fastify, request.user.id, 'online');
+
+      // Refund business
+      await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [delivery.price, delivery.business_id]);
+      console.log(`[Revenue] Refunded ${delivery.price} to business ${delivery.business_id} due to driver cancellation of ${id}`);
     }
 
-    // If delivered, update driver back to online
+    // If delivered, update driver back to online and credit earnings
     if (status === 'delivered') {
       await updateDriverStatus(fastify, request.user.id, 'online');
       
+      // Credit driver (80% of price for MVP)
+      const driverEarning = Math.round(delivery.price * 0.8 * 100) / 100;
+      await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [driverEarning, request.user.id]);
+      console.log(`[Revenue] Credited ${driverEarning} to driver ${request.user.id} for delivery ${id}`);
+
       // Referral Logic: Trigger on first verified delivery
       const business = await db.get('SELECT id, referred_by, verification_status, data_category FROM users WHERE id = ?', [delivery.business_id]);
       if (business && business.referred_by && business.verification_status === 'VERIFIED' && business.data_category === 'real') {
@@ -435,10 +480,18 @@ export async function deliveryRoutes(fastify, options) {
       return reply.status(400).send({ error: 'Cannot cancel a completed or already cancelled delivery' });
     }
 
-    await db.run(
-      'UPDATE deliveries SET status = "cancelled", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    const result = await db.run(
+      'UPDATE deliveries SET status = "cancelled", updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status != "cancelled"',
       [id]
     );
+
+    if (result.changes === 0) {
+      return await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+    }
+
+    // Refund business
+    await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [delivery.price, delivery.business_id]);
+    console.log(`[Revenue] Refunded ${delivery.price} to business ${delivery.business_id} due to business/admin cancellation of ${id}`);
 
     // If driver was assigned, make them online again
     if (delivery.driver_id) {
