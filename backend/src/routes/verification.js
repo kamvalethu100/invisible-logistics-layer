@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { kenyaVerify } from '../utils/kenyaVerification.js';
+import { webhookService } from '../utils/webhook.js';
 
 const kycSchemaZA = z.object({
   id_number: z.string(),
@@ -118,6 +120,40 @@ export async function verificationRoutes(fastify, options) {
       'UPDATE users SET verification_status = ? WHERE id = ?',
       [status, userId]
     );
+
+    // Notify user via Socket and persistent Event log
+    const user = await db.get('SELECT data_category FROM users WHERE id = ?', [userId]);
+    
+    // Persistent log
+    await db.run(
+      'INSERT INTO events (id, type, user_id, data_category, metadata) VALUES (?, ?, ?, ?, ?)',
+      [uuidv4(), 'verification_update', userId, user.data_category, JSON.stringify({ status })]
+    );
+
+    // Socket notification if user is online
+    fastify.io.emit(`user_${userId}_notification`, {
+        type: 'verification_update',
+        status,
+        message: status === 'VERIFIED' ? 'Your account has been verified!' : 'Your verification request was rejected. Please contact support.'
+    });
+
+    // Add persistent notification
+    await db.run(
+      'INSERT INTO notifications (id, user_id, type, message) VALUES (?, ?, ?, ?)',
+      [uuidv4(), userId, 'verification_update', status === 'VERIFIED' ? 'Your account has been verified!' : 'Your verification request was rejected. Please contact support.']
+    );
+
+    // Call Webhook if user has one configured
+    if (user.webhook_url) {
+      await webhookService.callWebhook(user.webhook_url, 'verification_update', {
+        user_id: userId,
+        status,
+        message: status === 'VERIFIED' ? 'Your account has been verified!' : 'Your verification request was rejected. Please contact support.'
+      });
+    }
+
+    // Growth Mandate: Placeholder for SMS
+    console.log(`[Notification] Automated notification sent to ${userId}: Verification ${status}`);
 
     return { status: 'success', userId, new_status: status };
   });

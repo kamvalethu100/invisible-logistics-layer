@@ -205,21 +205,8 @@ export async function deliveryRoutes(fastify, options) {
       const id = uuidv4();
       const status = 'pending';
 
-      // Deduct balance immediately with atomicity check to prevent over-drafting
-      const deductionResult = await db.run(
-        'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?', 
-        [price, request.user.id, price]
-      );
-
-      if (deductionResult.changes === 0) {
-        return reply.status(402).send({ 
-          error: 'Insufficient balance', 
-          required: price,
-          message: 'Balance may have changed during processing. Please ensure you have enough funds.' 
-        });
-      }
-
-      console.log(`[Revenue] Atomic deduction of ${price} from business ${request.user.id} for delivery ${id}`);
+      // Use RevenueService for atomic deduction and recording
+      await fastify.revenue.deductDeliveryFee(db, request.user.id, id, price, currency_code, data_category);
 
       await db.run(
         `INSERT INTO deliveries (
@@ -234,14 +221,22 @@ export async function deliveryRoutes(fastify, options) {
 
       const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
       
-      // Trigger matching
-      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, 5, null, data_category, country_code);
+      // Trigger matching with prioritization for 'High Intent' (Premium) customers
+      const searchRadius = user.is_premium ? 10 : 5;
+      const notifyCount = user.is_premium ? 10 : 3;
+
+      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, searchRadius, null, data_category, country_code);
+      
       if (nearbyDrivers.length > 0) {
-        // For MVP, we'll notify all nearby drivers (broadcast) or just the closest one.
-        // Let's notify the top 3 closest drivers.
-        nearbyDrivers.slice(0, 3).forEach(driver => {
-          fastify.io.to(driver.socketId).emit('job_offer', delivery);
+        // Notify prioritized number of drivers
+        nearbyDrivers.slice(0, notifyCount).forEach(driver => {
+          fastify.io.to(driver.socketId).emit('job_offer', {
+              ...delivery,
+              priority: user.is_premium ? 'high' : 'standard'
+          });
         });
+        
+        console.log(`[Matching] Dispatched delivery ${id} to ${Math.min(nearbyDrivers.length, notifyCount)} drivers (Premium: ${user.is_premium})`);
       } else {
         // Log failure: no drivers found
         await logFailure(db, 'matching_failure', id, 'no_drivers_nearby', data_category, { lat: data.pickup_lat, lng: data.pickup_lng });
@@ -416,42 +411,20 @@ export async function deliveryRoutes(fastify, options) {
       await logFailure(db, 'delivery_cancelled', id, reason || 'driver_cancelled', delivery.data_category, { driver_id: request.user.id });
       await updateDriverStatus(fastify, request.user.id, 'online');
 
-      // Refund business
-      await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [delivery.price, delivery.business_id]);
-      console.log(`[Revenue] Refunded ${delivery.price} to business ${delivery.business_id} due to driver cancellation of ${id}`);
+      // Use RevenueService for refund
+      await fastify.revenue.refundDelivery(db, delivery.business_id, id, delivery.price, delivery.currency_code, delivery.data_category, reason || 'driver_cancelled');
     }
 
     // If delivered, update driver back to online and credit earnings
     if (status === 'delivered') {
       await updateDriverStatus(fastify, request.user.id, 'online');
       
-      // Credit driver (80% of price for MVP)
-      const driverEarning = Math.round(delivery.price * 0.8 * 100) / 100;
-      await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [driverEarning, request.user.id]);
-      console.log(`[Revenue] Credited ${driverEarning} to driver ${request.user.id} for delivery ${id}`);
+      // Use RevenueService for driver credit
+      await fastify.revenue.creditDriverEarning(db, request.user.id, id, delivery.price, delivery.currency_code, delivery.data_category);
 
-      // Referral Logic: Trigger on first verified delivery
-      const business = await db.get('SELECT id, referred_by, verification_status, data_category FROM users WHERE id = ?', [delivery.business_id]);
-      if (business && business.referred_by && business.verification_status === 'VERIFIED' && business.data_category === 'real') {
-          const completedCount = await db.get('SELECT COUNT(*) as count FROM deliveries WHERE business_id = ? AND status = "delivered"', [delivery.business_id]);
-          if (completedCount.count === 1) {
-              // This is the first delivery! Credit the referrer.
-              const creditAmount = 100;
-              await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [creditAmount, business.referred_by]);
-              
-              await db.run(
-                  'INSERT INTO referral_credits (id, referrer_id, referred_id, amount, status) VALUES (?, ?, ?, ?, ?)',
-                  [uuidv4(), business.referred_by, business.id, creditAmount, 'COMPLETED']
-              );
-              
-              await logEvent(db, 'referral_reward_paid', business.referred_by, id, 'real', {
-                  referred_user_id: business.id,
-                  amount: creditAmount
-              });
-              
-              console.log(`[Referral] Paid ${creditAmount} to referrer ${business.referred_by} for user ${business.id}`);
-          }
-      }
+      // Referral Logic: Award credits upon first successful delivery/job completion
+      await fastify.revenue.handleReferralAward(db, delivery.business_id, id, delivery.data_category);
+      await fastify.revenue.handleReferralAward(db, request.user.id, id, delivery.data_category);
     }
 
     const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
@@ -489,9 +462,8 @@ export async function deliveryRoutes(fastify, options) {
       return await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
     }
 
-    // Refund business
-    await db.run('UPDATE users SET balance = balance + ? WHERE id = ?', [delivery.price, delivery.business_id]);
-    console.log(`[Revenue] Refunded ${delivery.price} to business ${delivery.business_id} due to business/admin cancellation of ${id}`);
+    // Use RevenueService for refund
+    await fastify.revenue.refundDelivery(db, delivery.business_id, id, delivery.price, delivery.currency_code, delivery.data_category, reason || 'business_cancelled');
 
     // If driver was assigned, make them online again
     if (delivery.driver_id) {
@@ -504,5 +476,22 @@ export async function deliveryRoutes(fastify, options) {
     fastify.io.to(`delivery_${id}`).emit('status_update', updatedDelivery);
 
     return updatedDelivery;
+  });
+  // Decline delivery (Driver)
+  fastify.post('/:id/decline', async (request, reply) => {
+    if (request.user.role !== 'driver') {
+      return reply.status(403).send({ error: 'Only drivers can decline deliveries' });
+    }
+    const { id } = request.params;
+    const { reason } = request.body;
+    const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+    if (!delivery) {
+      return reply.status(404).send({ error: 'Delivery not found' });
+    }
+    if (delivery.status !== 'pending') {
+      return reply.status(400).send({ error: 'Delivery is no longer available' });
+    }
+    await logEvent(db, 'job_declined', request.user.id, id, delivery.data_category, { reason });
+    return { status: 'success' };
   });
 }

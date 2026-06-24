@@ -47,9 +47,9 @@ export async function authRoutes(fastify, options) {
       }
 
       await db.run(
-        `INSERT INTO users (id, email, password_hash, role, name, phone, vehicle_type, status, data_category, country_code, currency_code, region, referral_code, referred_by, balance) 
+        `INSERT INTO users (id, email, password_hash, role, name, phone, vehicle_type, status, data_category, country_code, currency_code, region, referral_code, referred_by, balance)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, email, hashedPassword, role, name, phone || null, vehicle_type || null, role === 'driver' ? 'offline' : null, data_category, country_code, currency_code, region, myReferralCode, referredBy, 0]
+        [id, email, hashedPassword, role, name, phone || null, vehicle_type || null, 'offline', data_category, country_code, currency_code, region, myReferralCode, referredBy, 0]
       );
 
       const token = fastify.jwt.sign({ 
@@ -127,5 +127,24 @@ export async function authRoutes(fastify, options) {
     }
     
     return user;
+  });
+
+  fastify.patch('/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { name, phone, webhook_url } = request.body;
+    const userId = request.user.id;
+
+    const sets = [];
+    const params = [];
+
+    if (name) { sets.push('name = ?'); params.push(name); }
+    if (phone) { sets.push('phone = ?'); params.push(phone); }
+    if (webhook_url !== undefined) { sets.push('webhook_url = ?'); params.push(webhook_url); }
+
+    if (sets.length === 0) return reply.status(400).send({ error: 'No fields to update' });
+
+    params.push(userId);
+    await db.run(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params);
+
+    return { status: 'success' };
   });
 }

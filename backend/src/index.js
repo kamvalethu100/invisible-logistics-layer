@@ -5,8 +5,11 @@ import { initDb } from './db.js';
 import { authRoutes } from './routes/auth.js';
 import { deliveryRoutes } from './routes/deliveries.js';
 import { leadRoutes } from './routes/leads.js';
+import { growthRoutes } from './routes/growth.js';
 import { verificationRoutes } from './routes/verification.js';
 import { paymentRoutes } from './routes/payments.js';
+import { revenueService } from './utils/revenue.js';
+import { startMatchingRetryLoop } from "./utils/matchingRetry.js";
 import { initSockets } from './sockets.js';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
@@ -64,14 +67,17 @@ const start = async () => {
   try {
     const db = await initDb();
     fastify.decorate('db', db);
-
+    fastify.decorate('revenue', revenueService);
     // Initialize Sockets
     const io = await initSockets(fastify);
     fastify.decorate('io', io);
+    // Start background matching retry loop
+    startMatchingRetryLoop(fastify);
 
     fastify.register(authRoutes, { prefix: '/api/auth' });
     fastify.register(deliveryRoutes, { prefix: '/api/deliveries' });
     fastify.register(leadRoutes, { prefix: '/api/leads' });
+    fastify.register(growthRoutes, { prefix: '/api/growth' });
     fastify.register(verificationRoutes, { prefix: '/api/verification' });
     fastify.register(paymentRoutes, { prefix: '/api/payments' });
 

@@ -125,9 +125,20 @@ export async function paymentRoutes(fastify, options) {
             });
         }
 
-        // Deduct balance immediately
-        await db.run('UPDATE users SET balance = balance - ? WHERE id = ?', [data.amount, request.user.id]);
-        console.log(`[Revenue] Deducted ${data.amount} from driver ${request.user.id} for payout ${payoutId}`);
+        // Deduct balance immediately with atomicity check
+        const deductionResult = await db.run(
+            'UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ?', 
+            [data.amount, request.user.id, data.amount]
+        );
+
+        if (deductionResult.changes === 0) {
+            return reply.status(402).send({ 
+                error: 'Insufficient balance', 
+                message: 'Balance may have changed during processing. Please ensure you have enough funds.' 
+            });
+        }
+        
+        console.log(`[Revenue] Atomic deduction of ${data.amount} from driver ${request.user.id} for payout ${payoutId}`);
 
         await db.run(
             `INSERT INTO payments (id, user_id, amount, currency, status, provider, type, data_category, metadata) 

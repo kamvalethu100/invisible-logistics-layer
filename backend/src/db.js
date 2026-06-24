@@ -21,7 +21,7 @@ export async function initDb() {
       name TEXT NOT NULL,
       phone TEXT,
       vehicle_type TEXT,
-      status TEXT,
+      status TEXT DEFAULT 'offline',
       data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated')),
       country_code TEXT DEFAULT 'ZA',
       currency_code TEXT DEFAULT 'ZAR',
@@ -119,6 +119,16 @@ export async function initDb() {
       FOREIGN KEY (referrer_id) REFERENCES users (id),
       FOREIGN KEY (referred_id) REFERENCES users (id)
     );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      message TEXT NOT NULL,
+      read_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
   `);
 
   // Migrations for existing DB
@@ -172,6 +182,13 @@ export async function initDb() {
   } catch (e) {}
   try {
     await db.exec("ALTER TABLE users ADD COLUMN gold_status INTEGER DEFAULT 0");
+  } catch (e) {}
+  try {
+    await db.exec("ALTER TABLE users ADD COLUMN webhook_url TEXT");
+  } catch (e) {}
+  try {
+    // Ensure all drivers have at least 'offline' status (fix for migration NULLs)
+    await db.exec("UPDATE users SET status = 'offline' WHERE role = 'driver' AND (status IS NULL OR status = '')");
   } catch (e) {}
   try {
     await db.exec("ALTER TABLE payments ADD COLUMN data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated'))");
