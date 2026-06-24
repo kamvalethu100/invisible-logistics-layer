@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/context/ToastContext";
 import { Footer } from "@/components/layout/Footer";
+import { COMPANY_NAME, APP_NAME } from "@/lib/constants";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LogistiQS | Invisible Logistics Layer",
-  description: "Real-time logistics orchestration for SMEs by LOGISTIQS SA (Pty) Ltd",
+  title: `${APP_NAME} | Invisible Logistics Layer`,
+  description: `Real-time logistics orchestration for SMEs by ${COMPANY_NAME}`,
 };
 
 export default function RootLayout({
