@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Loader2, MapPin, Shield } from 'lucide-react';
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface EarningItem {
   id: string;
@@ -16,6 +17,7 @@ interface EarningItem {
 }
 
 export default function DriverEarnings() {
+  const { user } = useAuth();
   const [earnings, setEarnings] = useState<any>(null);
   const [history, setHistory] = useState<EarningItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,18 +94,17 @@ export default function DriverEarnings() {
           {category === 'real' && <Shield className="w-4 h-4 text-green-200" />}
         </p>
         <div className="flex items-baseline gap-1">
-           <span className="text-2xl font-medium text-green-200">R</span>
-           <span className="text-5xl font-bold">{(earnings?.total || 0).toFixed(2)}</span>
+           <span className="text-5xl font-bold">{formatCurrency(earnings?.total || 0, user?.currency_code)}</span>
         </div>
         
         <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-white/20">
           <div>
             <p className="text-white/70 text-xs uppercase font-bold">Today</p>
-            <p className="text-xl font-bold">R {(earnings?.today || 0).toFixed(2)}</p>
+            <p className="text-xl font-bold">{formatCurrency(earnings?.today || 0, user?.currency_code)}</p>
           </div>
           <div>
             <p className="text-white/70 text-xs uppercase font-bold">This Week</p>
-            <p className="text-xl font-bold">R {(earnings?.week || 0).toFixed(2)}</p>
+            <p className="text-xl font-bold">{formatCurrency(earnings?.week || 0, user?.currency_code)}</p>
           </div>
         </div>
         <div className="absolute top-4 right-4">
@@ -126,8 +127,8 @@ export default function DriverEarnings() {
         <div className="h-32 flex items-end justify-between gap-2">
           {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
             <div key={i} className="flex-1 bg-green-100 rounded-t-lg relative group cursor-pointer hover:bg-green-500 transition-colors" style={{ height: `${h}%` }}>
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                R{h*5}
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                {formatCurrency(h*5, user?.currency_code)}
               </div>
             </div>
           ))}
@@ -152,7 +153,7 @@ export default function DriverEarnings() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-900 text-sm">R {item.amount.toFixed(2)}</p>
+                      <p className="font-bold text-gray-900 text-sm">{formatCurrency(item.amount, user?.currency_code)}</p>
                       <DataCategoryBadge category={item.data_category || category} />
                     </div>
                     <p className="text-xs text-gray-500 flex items-center mt-0.5">

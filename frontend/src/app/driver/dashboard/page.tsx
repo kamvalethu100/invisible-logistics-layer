@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Navigation, DollarSign, List, Bell, Loader2, Shield, AlertCircle, CheckCircle2, User, MapPin } from 'lucide-react';
+import { Navigation, DollarSign, List, Bell, Loader2, Shield, AlertCircle, CheckCircle2, User, MapPin, ArrowRight, Wifi, WifiOff } from 'lucide-react';
+import { VerificationFlow } from '@/components/ui/VerificationFlow';
+import { formatCurrency } from '@/lib/utils';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
@@ -21,7 +24,8 @@ interface JobOffer {
 
 export default function DriverDashboard() {
   const { user } = useAuth();
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
+  const { toast } = useToast();
   const [offer, setOffer] = useState<JobOffer | null>(null);
   const [activeJob, setActiveJob] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
@@ -30,6 +34,7 @@ export default function DriverDashboard() {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [showPodScreen, setShowPodScreen] = useState(false);
   const [recipientName, setRecipientName] = useState('');
+  const [signalStrength, setSignalStrength] = useState<'strong' | 'weak' | 'none'>('strong');
 
   useEffect(() => {
     if (user?.data_category) {
@@ -75,56 +80,84 @@ export default function DriverDashboard() {
       }
     });
 
-    // Mock Location Updates Interval
+    // Adaptive Location Updates Interval
+    const intervalTime = activeJob ? 5000 : 30000; // 5s when on a trip, 30s when idle
+    
     const locationInterval = setInterval(() => {
-      if (socket.connected) {
+      if (socket && connected) {
+        // Mock Signal Strength Fluctuation
+        const rand = Math.random();
+        if (rand > 0.95) setSignalStrength('none');
+        else if (rand > 0.8) setSignalStrength('weak');
+        else setSignalStrength('strong');
+
+        // In a real app, we would use navigator.geolocation.getCurrentPosition
         const mockLat = -33.9249 + (Math.random() - 0.5) * 0.01;
         const mockLng = 18.4241 + (Math.random() - 0.5) * 0.01;
         socket.emit('update_location', { lat: mockLat, lng: mockLng });
-        console.log('Sent location update:', { mockLat, mockLng });
+        console.log(`Sent location update (${activeJob ? 'ACTIVE' : 'IDLE'}):`, { mockLat, mockLng });
+      } else {
+        setSignalStrength('none');
       }
-    }, 10000);
+    }, intervalTime);
 
     return () => {
       socket.off('job_offer');
       socket.off('status_update');
       clearInterval(locationInterval);
     };
-  }, [socket]);
+  }, [socket, activeJob]);
 
   const acceptJob = async () => {
     if (!offer) return;
-    setLoading(true);
+    
+    // Optimistic Update
+    const currentOffer = offer;
+    setActiveJob(offer);
+    setOffer(null);
+    
     try {
-      await api.patch(`/api/deliveries/${offer.id}/accept`);
-      setActiveJob(offer);
-      setOffer(null);
+      await api.patch(`/api/deliveries/${currentOffer.id}/accept`);
+      toast('Job Accepted', 'You have successfully accepted the job.', 'success');
     } catch (err) {
       console.error('Failed to accept job', err);
-      alert('Failed to accept job. It might have been taken.');
-      setOffer(null);
-    } finally {
-      setLoading(false);
+      toast('Accept Failed', 'Job might have been taken by another driver.', 'error');
+      // Rollback
+      setActiveJob(null);
+      setOffer(currentOffer);
     }
   };
 
   const updateStatus = async (status: string, metadata?: any) => {
     if (!activeJob) return;
-    setLoading(true);
+    
+    // Optimistic Update
+    const prevJob = { ...activeJob };
+    setActiveJob((prev: any) => ({ ...prev, status }));
+    
+    if (status === 'delivered') {
+      setShowPodScreen(false);
+      setRecipientName('');
+    }
+
     try {
       await api.patch(`/api/deliveries/${activeJob.id}/status`, { status, metadata });
-      setActiveJob((prev: any) => ({ ...prev, status }));
       if (status === 'delivered') {
+        toast('Success!', 'Package delivered successfully.', 'success');
         setActiveJob(null);
-        setShowPodScreen(false);
-        setRecipientName('');
         // Refresh stats
         fetchData(category);
+      } else if (status === 'picked_up') {
+        toast('Picked Up', 'Delivery is now in transit.', 'info');
       }
     } catch (err) {
       console.error('Failed to update status', err);
-    } finally {
-      setLoading(false);
+      toast('Update Failed', 'Failed to update status. Please try again.', 'error');
+      // Rollback
+      setActiveJob(prevJob);
+      if (status === 'delivered') {
+        setShowPodScreen(true);
+      }
     }
   };
 
@@ -134,8 +167,24 @@ export default function DriverDashboard() {
 
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3 text-slate-900">
             Driver Dashboard
+            <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-full border border-slate-200">
+              {signalStrength === 'strong' ? (
+                <Wifi className="w-3.5 h-3.5 text-green-600" />
+              ) : signalStrength === 'weak' ? (
+                <Wifi className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              ) : (
+                <WifiOff className="w-3.5 h-3.5 text-red-500" />
+              )}
+              <span className={cn(
+                "text-[10px] font-bold uppercase tracking-tight",
+                signalStrength === 'strong' ? "text-green-700" :
+                signalStrength === 'weak' ? "text-amber-700" : "text-red-700"
+              )}>
+                GPS {signalStrength}
+              </span>
+            </div>
             <button 
               onClick={() => setIsIssueModalOpen(true)}
               className="text-xs font-medium text-gray-400 hover:text-amber-600 flex items-center gap-1 transition-colors px-2 py-1 rounded-full hover:bg-amber-50"
@@ -177,12 +226,14 @@ export default function DriverDashboard() {
           </p>
           <DollarSign className="w-6 h-6 text-green-200" />
         </div>
-        <p className="text-4xl font-bold">R {(stats?.total_earnings || 0).toFixed(2)}</p>
+        <p className="text-4xl font-bold">{formatCurrency(stats?.total_earnings || 0, user?.currency_code)}</p>
         <div className="mt-4 flex gap-4 text-sm text-green-100">
           <p><span className="font-bold">{stats?.completed_jobs || 0}</span> Jobs completed</p>
           <DataCategoryBadge category={category} className="bg-white/20 border-white/30 text-white" />
         </div>
       </div>
+
+      <VerificationFlow />
 
       {/* Active Job */}
       {activeJob && (
@@ -292,7 +343,7 @@ export default function DriverDashboard() {
             </div>
             <div className="flex gap-3">
               <Button onClick={acceptJob} disabled={loading} className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-bold">
-                {loading ? <Loader2 className="animate-spin w-5 h-5" /> : `Accept Job (R ${offer.price.toFixed(2)})`}
+                {loading ? <Loader2 className="animate-spin w-5 h-5" /> : `Accept Job (${formatCurrency(offer.price, user?.currency_code)})`}
               </Button>
               <Button onClick={() => setOffer(null)} variant="outline" className="px-6">Decline</Button>
             </div>
