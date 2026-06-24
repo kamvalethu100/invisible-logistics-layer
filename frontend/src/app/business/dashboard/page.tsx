@@ -1,10 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Package, Clock, CheckCircle, MapPin, Loader2, Shield, Info, AlertCircle } from 'lucide-react';
+import { Package, Clock, CheckCircle, MapPin, Loader2, Shield, Info, AlertCircle, ArrowRight, XCircle, ChevronRight } from 'lucide-react';
+import { VerificationFlow } from '@/components/ui/VerificationFlow';
+import { PremiumUpgrade } from '@/components/ui/PremiumUpgrade';
+import { WalkthroughModal } from '@/components/ui/WalkthroughModal';
+import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/context/ToastContext';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { DataIntegrityBanner } from '@/components/ui/DataIntegrityBanner';
 import { IssueReportModal } from '@/components/ui/IssueReportModal';
@@ -15,6 +20,7 @@ import Link from 'next/link';
 interface Delivery {
   id: string;
   status: string;
+  payment_status?: string;
   pickup_address: string;
   dropoff_address: string;
   price: number;
@@ -28,7 +34,8 @@ export default function BusinessDashboard() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<DataCategory>('real');
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user?.data_category) {
@@ -62,6 +69,15 @@ export default function BusinessDashboard() {
     // Listen for any status updates
     socket.on('status_update', (update: { deliveryId: string, status: string }) => {
       console.log('Real-time update:', update);
+      
+      if (update.status === 'assigned') {
+        toast('Driver Assigned!', `A driver has accepted your delivery request #${update.deliveryId.slice(0, 8)}.`, 'notification');
+      } else if (update.status === 'picked_up') {
+        toast('Package Picked Up', `Your delivery #${update.deliveryId.slice(0, 8)} is now in transit.`, 'notification');
+      } else if (update.status === 'delivered') {
+        toast('Delivery Completed!', `Your delivery #${update.deliveryId.slice(0, 8)} has been successfully delivered.`, 'success');
+      }
+
       setDeliveries((prev) => 
         prev.map((d) => 
           d.id === update.deliveryId ? { ...d, status: update.status } : d
@@ -77,7 +93,33 @@ export default function BusinessDashboard() {
     };
   }, [socket]);
 
-  const getStatusColor = (status: string) => {
+  const cancelDelivery = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to cancel this delivery?')) return;
+
+    // Optimistic Update
+    const prevDeliveries = [...deliveries];
+    setDeliveries((prev) => prev.filter((d) => d.id !== id));
+
+    try {
+      await api.patch(`/api/deliveries/${id}/status`, { status: 'cancelled' });
+      toast('Delivery Cancelled', `Your delivery request #${id.slice(0, 8)} has been cancelled.`, 'info');
+      // Refresh stats
+      fetchData(category);
+    } catch (err) {
+      console.error('Failed to cancel delivery', err);
+      toast('Cancellation Failed', 'Failed to cancel delivery. Please try again.', 'error');
+      // Rollback
+      setDeliveries(prevDeliveries);
+    }
+  };
+
+  const getStatusColor = (status: string, paymentStatus?: string) => {
+    if (status === 'pending' && paymentStatus === 'pending') return 'bg-rose-100 text-rose-800 border border-rose-200';
+    if (status === 'pending' && paymentStatus === 'initiated') return 'bg-amber-100 text-amber-800 border border-amber-200';
+    
     switch (status) {
       case 'pending': return 'bg-amber-100 text-amber-800';
       case 'assigned': return 'bg-blue-100 text-blue-800';
@@ -89,6 +131,7 @@ export default function BusinessDashboard() {
 
   return (
     <div className="space-y-6">
+      <WalkthroughModal />
       <DataIntegrityBanner activeCategory={category} className="-mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6" />
       
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -167,10 +210,16 @@ export default function BusinessDashboard() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Total Spent</p>
-            <p className="text-2xl font-bold text-gray-900">R {(stats?.total_spent || 0).toFixed(2)}</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.total_spent || 0, user?.currency_code)}</p>
           </div>
           {category === 'real' && <div className="absolute top-0 right-0 p-1"><Shield className="w-4 h-4 text-green-500 opacity-20" /></div>}
         </div>
+      </div>
+
+      {/* Verification & Premium Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <VerificationFlow />
+        <PremiumUpgrade />
       </div>
 
       {/* Recent Deliveries */}
@@ -206,11 +255,25 @@ export default function BusinessDashboard() {
                     <p className="text-sm text-gray-500">To: {delivery.dropoff_address}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
-                    {delivery.status.replace(/_/g, ' ')}
-                  </span>
-                  <p className="text-xs text-gray-900 font-bold mt-1">R {delivery.price.toFixed(2)}</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${getStatusColor(delivery.status, delivery.payment_status)}`}>
+                      {delivery.status === 'pending' && delivery.payment_status === 'pending' ? 'UNPAID LOAD' : 
+                       delivery.status === 'pending' && delivery.payment_status === 'initiated' ? 'PENDING SETTLEMENT' :
+                       delivery.status.replace(/_/g, ' ')}
+                    </span>
+                    <p className="text-xs text-gray-900 font-bold mt-1">{formatCurrency(delivery.price, user?.currency_code)}</p>
+                  </div>
+                  {(delivery.status === 'pending' || delivery.status === 'assigned') && (
+                    <button 
+                      onClick={(e) => cancelDelivery(delivery.id, e)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                      title="Cancel Delivery"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
+                  )}
+                  <ChevronRight className="w-5 h-5 text-gray-300" />
                 </div>
               </Link>
             ))

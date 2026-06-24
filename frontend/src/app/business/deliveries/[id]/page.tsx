@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/lib/utils';
 import { MapPin, ArrowLeft, Loader2, Truck, Package, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -14,29 +16,46 @@ interface Delivery {
   dropoff_address: string;
   price: number;
   driver_id: string | null;
+  payment_status: 'pending' | 'initiated' | 'completed';
 }
 
 export default function DeliveryDetails() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [driverLocation, setDriverLocation] = useState<{lat: number, lng: number} | null>(null);
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
+
+  const fetchDelivery = async () => {
+    try {
+      const res = await api.get(`/api/deliveries/${id}`);
+      setDelivery(res.data);
+    } catch (err) {
+      console.error('Failed to fetch delivery', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDelivery = async () => {
-      try {
-        const res = await api.get(`/api/deliveries/${id}`);
-        setDelivery(res.data);
-      } catch (err) {
-        console.error('Failed to fetch delivery', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDelivery();
   }, [id]);
+
+  const handleProceedToPay = async () => {
+    setProcessingPayment(true);
+    try {
+      await api.patch(`/api/deliveries/${id}/initiate-payment`);
+      await fetchDelivery(); // Refresh to see updated status and banking details
+    } catch (err) {
+      console.error('Failed to initiate payment', err);
+      alert('Failed to initiate payment. Please try again.');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -87,10 +106,84 @@ export default function DeliveryDetails() {
           <p className="text-sm text-gray-500">Real-time tracking and status</p>
         </div>
         <div className="text-right">
-           <p className="text-xs font-bold text-gray-400 uppercase">Price</p>
-           <p className="text-lg font-bold text-blue-600">R {delivery.price.toFixed(2)}</p>
+           <p className="text-xs font-bold text-gray-400 uppercase">Total Value</p>
+           <p className="text-lg font-bold text-blue-600">{formatCurrency(delivery.price, user?.currency_code)}</p>
         </div>
       </header>
+
+      {/* SETTLEMENT GATE */}
+      {delivery.status === 'pending' && delivery.payment_status === 'pending' && (
+        <div className="bg-blue-600 p-8 rounded-2xl shadow-xl text-white">
+          <h2 className="text-2xl font-bold mb-4">Payment Summary</h2>
+          <div className="space-y-4 mb-8">
+            <div className="flex justify-between border-b border-blue-500 pb-2">
+              <span>Load Value</span>
+              <span>{formatCurrency(delivery.price * 0.8, user?.currency_code)}</span>
+            </div>
+            <div className="flex justify-between border-b border-blue-500 pb-2">
+              <span>LogistiQS Fee (Platform)</span>
+              <span>{formatCurrency(delivery.price * 0.2, user?.currency_code)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-xl">
+              <span>Total Payable</span>
+              <span>{formatCurrency(delivery.price, user?.currency_code)}</span>
+            </div>
+          </div>
+          
+          <Button 
+            className="w-full py-6 text-lg font-bold bg-white text-blue-600 hover:bg-gray-100"
+            onClick={handleProceedToPay}
+            disabled={processingPayment}
+          >
+            {processingPayment ? <Loader2 className="animate-spin mr-2" /> : null}
+            PROCEED TO PAY
+          </Button>
+          <p className="text-center text-xs text-blue-100 mt-4">
+            Clicking "Proceed to Pay" will authorize the load and reveal settlement banking details.
+          </p>
+        </div>
+      )}
+
+      {delivery.status === 'pending' && delivery.payment_status === 'initiated' && (
+        <div className="bg-emerald-50 p-8 rounded-2xl border-2 border-emerald-500 shadow-lg">
+          <div className="flex items-center mb-6">
+            <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white mr-4">
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-emerald-900">Payment Initiated</h2>
+              <p className="text-sm text-emerald-700">Please complete the EFT to activate driver matching.</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-emerald-200 space-y-4">
+            <h3 className="font-bold text-gray-900 border-b pb-2">Official LOGISTIQS Banking Details</h3>
+            <div className="grid grid-cols-2 gap-y-3 text-sm">
+              <span className="text-gray-500">Bank:</span>
+              <span className="font-medium">Capitec Bank SA</span>
+              
+              <span className="text-gray-500">Account Number:</span>
+              <span className="font-medium">2549975711</span>
+              
+              <span className="text-gray-500">Branch Code:</span>
+              <span className="font-medium">470010</span>
+              
+              <span className="text-gray-500">Branch Name:</span>
+              <span className="font-medium">CAPITEC BANK</span>
+              
+              <span className="text-gray-500">SWIFT Code:</span>
+              <span className="font-medium">CABLZAJJ</span>
+              
+              <span className="text-gray-500 font-bold text-emerald-600">EFT Reference:</span>
+              <span className="font-bold text-emerald-600 underline">LOGISTIQS-{delivery.id.slice(0,8).toUpperCase()}</span>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-emerald-100 rounded-lg text-xs text-emerald-800 leading-relaxed">
+            <strong>Important Rules:</strong> No load is confirmed until EFT payment is initiated and verified. Your delivery is currently in the "Pending Payment" phase. Driver assignment will begin automatically once settlement is tracked using the <strong>LOGISTIQS</strong> reference.
+          </div>
+        </div>
+      )}
 
       {/* Tracking Map Placeholder */}
       <div className="bg-slate-200 aspect-[16/9] rounded-2xl shadow-inner relative overflow-hidden flex items-center justify-center border-4 border-white shadow-xl">

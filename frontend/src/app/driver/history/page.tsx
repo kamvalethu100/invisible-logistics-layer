@@ -5,7 +5,7 @@ import { History, Search, Filter, MapPin, Calendar, Loader2, CheckCircle2, XCirc
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface Delivery {
   id: string;
@@ -100,7 +100,7 @@ export default function DriverHistory() {
                     <p className="text-xs text-gray-500">{formatDate(item.created_at)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-green-600">R {item.price.toFixed(2)}</p>
+                    <p className="font-bold text-green-600">{formatCurrency(item.price, user?.currency_code)}</p>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                       item.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                     }`}>
