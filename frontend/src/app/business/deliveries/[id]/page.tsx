@@ -4,7 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
-import { MapPin, ArrowLeft, Loader2, Truck, Package, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/lib/utils';
+import { MapPin, ArrowLeft, Loader2, Truck, Package, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface Delivery {
@@ -19,10 +21,13 @@ interface Delivery {
 export default function DeliveryDetails() {
   const { id } = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [driverLocation, setDriverLocation] = useState<{lat: number, lng: number} | null>(null);
-  const socket = useSocket();
+  const { socket, connected } = useSocket();
+
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
 
   useEffect(() => {
     const fetchDelivery = async () => {
@@ -37,6 +42,21 @@ export default function DeliveryDetails() {
     };
     fetchDelivery();
   }, [id]);
+
+  const initiatePayment = async () => {
+    setInitiatingPayment(true);
+    try {
+      const res = await api.patch(`/api/deliveries/${id}/initiate-payment`, {
+        payment_method: 'EFT'
+      });
+      setDelivery(res.data);
+    } catch (err: any) {
+      console.error('Failed to initiate payment', err);
+      alert(err.response?.data?.error || 'Failed to initiate payment');
+    } finally {
+      setInitiatingPayment(false);
+    }
+  };
 
   useEffect(() => {
     if (!socket || !id) return;
@@ -65,7 +85,8 @@ export default function DeliveryDetails() {
   if (!delivery) return <div className="p-8 text-center text-red-500">Delivery not found.</div>;
 
   const steps = [
-    { key: 'pending', label: 'Requested', icon: Package },
+    { key: 'PENDING_PAYMENT_VERIFICATION', label: 'Payment Pending', icon: Package },
+    { key: 'pending', label: 'Finding Driver', icon: Package },
     { key: 'assigned', label: 'Driver Assigned', icon: Truck },
     { key: 'picked_up', label: 'Picked Up', icon: Truck },
     { key: 'delivered', label: 'Delivered', icon: CheckCircle },
@@ -73,7 +94,7 @@ export default function DeliveryDetails() {
 
   const currentStepIndex = steps.findIndex(s => s.key === delivery.status) !== -1 
     ? steps.findIndex(s => s.key === delivery.status) 
-    : 0;
+    : (delivery.status === 'awaiting_payment' ? 0 : 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -88,9 +109,55 @@ export default function DeliveryDetails() {
         </div>
         <div className="text-right">
            <p className="text-xs font-bold text-gray-400 uppercase">Price</p>
-           <p className="text-lg font-bold text-blue-600">R {delivery.price.toFixed(2)}</p>
+           <p className="text-lg font-bold text-blue-600">{formatCurrency(delivery.price, user?.currency_code)}</p>
         </div>
       </header>
+
+      {delivery.status === 'PENDING_PAYMENT_VERIFICATION' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-amber-600" />
+            <h2 className="text-lg font-bold text-amber-900">Payment Required</h2>
+          </div>
+          <p className="text-sm text-amber-800">
+            This delivery is locked until payment is verified. Please click the button below to initiate the EFT process and view settlement details.
+          </p>
+          
+          {(delivery as any).payment_status === 'pending' ? (
+            <Button 
+              onClick={initiatePayment} 
+              disabled={initiatingPayment}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {initiatingPayment ? <Loader2 className="animate-spin mr-2" /> : null}
+              Confirm & Pay {formatCurrency(delivery.price, user?.currency_code)}
+            </Button>
+          ) : (
+            <div className="bg-white p-4 rounded-lg border border-amber-100 space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">EFT Settlement Details</p>
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <span className="text-gray-500">Bank:</span>
+                <span className="font-bold text-gray-900">Capitec Bank</span>
+                <span className="text-gray-500">Account:</span>
+                <span className="font-bold text-gray-900">2549975711</span>
+                <span className="text-gray-500">Branch:</span>
+                <span className="font-bold text-gray-900">470010</span>
+                <span className="text-gray-500">Reference:</span>
+                <span className="font-bold text-blue-700">FLOWGRID</span>
+              </div>
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[10px] text-gray-500 italic">
+                  * Please email your Proof of Payment (POP) to <span className="font-bold">kamva100@proton.me</span>. Manual verification takes 5-15 mins.
+                </p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-md flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                <p className="text-xs font-medium text-blue-800">Awaiting Manual Verification...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tracking Map Placeholder */}
       <div className="bg-slate-200 aspect-[16/9] rounded-2xl shadow-inner relative overflow-hidden flex items-center justify-center border-4 border-white shadow-xl">

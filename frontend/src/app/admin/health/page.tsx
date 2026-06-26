@@ -17,6 +17,7 @@ import {
 import api from '@/lib/api';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 import { cn } from '@/lib/utils';
+import { useAdminFilter } from '@/context/AdminFilterContext';
 
 interface HealthStats {
   success_rate: number;
@@ -38,37 +39,35 @@ interface FailureLog {
 }
 
 export default function OperationalHealth() {
+  const { countryCode, city, category } = useAdminFilter();
   const [stats, setStats] = useState<HealthStats | null>(null);
   const [failures, setFailures] = useState<FailureLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<DataCategory>('real');
 
-  const fetchData = async (cat: DataCategory) => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      // These endpoints are being developed by the backend engineer
       const [healthRes, failuresRes] = await Promise.all([
-        api.get(`/api/admin/health?category=${cat}`),
-        api.get(`/api/admin/failures?category=${cat}&limit=10`)
+        api.get(`/api/admin/health`, { params: { country: countryCode, city, category } }),
+        api.get(`/api/admin/failures`, { params: { country: countryCode, city, category, limit: 10 } })
       ]);
       setStats(healthRes.data);
       setFailures(failuresRes.data);
     } catch (err) {
       console.error('Failed to fetch health data', err);
-      // Fallback/Mock data for demonstration if backend is not ready
+      // Fallback/Mock data for demonstration
       setStats({
-        success_rate: 94.2,
-        avg_latency: 4.8,
-        total_real_deliveries: 128,
+        success_rate: countryCode === 'ZA' ? 94.2 : countryCode === 'NG' ? 88.5 : 91.0,
+        avg_latency: countryCode === 'ZA' ? 4.8 : countryCode === 'NG' ? 12.4 : 8.2,
+        total_real_deliveries: countryCode === 'ZA' ? 128 : countryCode === 'NG' ? 450 : 310,
         failed_matches: 3,
         active_incidents: 0,
         latency_trend: 'down',
         success_trend: 'up'
       });
       setFailures([
-        { id: '1', type: 'matching_timeout', description: 'No driver found for delivery #A12BC in Khayelitsha', category: 'real', timestamp: new Date().toISOString(), severity: 'medium' },
-        { id: '2', type: 'gps_signal_drop', description: 'Driver #D99 lost GPS signal for 45s during transit', category: 'real', timestamp: new Date(Date.now() - 3600000).toISOString(), severity: 'low' },
-        { id: '3', type: 'delivery_cancellation', description: 'Business cancelled delivery #C44 due to stock error', category: 'real', timestamp: new Date(Date.now() - 7200000).toISOString(), severity: 'low' },
+        { id: '1', type: 'matching_timeout', description: `No driver found for delivery #A12BC in ${city !== 'All' ? city : 'Region'}`, category, timestamp: new Date().toISOString(), severity: 'medium' },
+        { id: '2', type: 'gps_signal_drop', description: 'Driver #D99 lost GPS signal for 45s during transit', category, timestamp: new Date(Date.now() - 3600000).toISOString(), severity: 'low' },
       ]);
     } finally {
       setLoading(false);
@@ -76,37 +75,20 @@ export default function OperationalHealth() {
   };
 
   useEffect(() => {
-    fetchData(activeCategory);
-    const interval = setInterval(() => fetchData(activeCategory), 30000); // Refresh every 30s
+    fetchData();
+    const interval = setInterval(() => fetchData(), 30000);
     return () => clearInterval(interval);
-  }, [activeCategory]);
+  }, [countryCode, city, category]);
 
   return (
     <div className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Operational Health
+            Operational Health: {countryCode}
             <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
           </h1>
-          <p className="text-slate-500">Real-time system performance and failure tracking.</p>
-        </div>
-
-        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-          {(['real', 'test', 'simulated'] as DataCategory[]).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize",
-                activeCategory === cat 
-                  ? "bg-slate-900 text-white shadow-md" 
-                  : "text-slate-500 hover:bg-slate-50"
-              )}
-            >
-              {cat}
-            </button>
-          ))}
+          <p className="text-slate-500">Monitoring {city === 'All' ? 'all regions' : city} system performance.</p>
         </div>
       </header>
 
@@ -166,7 +148,7 @@ export default function OperationalHealth() {
               <ShieldCheck className="w-6 h-6 text-indigo-600" />
             </div>
           </div>
-          <p className="text-sm font-medium text-slate-500">Active Deliveries ({activeCategory})</p>
+          <p className="text-sm font-medium text-slate-500">Active Deliveries ({category})</p>
           <p className="text-3xl font-bold text-slate-900 mt-1">{stats?.total_real_deliveries}</p>
         </div>
       </div>
@@ -179,7 +161,7 @@ export default function OperationalHealth() {
               <AlertTriangle className="w-5 h-5 text-amber-500" />
               Real-Time Failure Logs
             </h2>
-            <DataCategoryBadge category={activeCategory} />
+            <DataCategoryBadge category={category as any} />
           </div>
           <div className="divide-y divide-slate-100">
             {loading && !failures.length ? (
@@ -253,7 +235,7 @@ export default function OperationalHealth() {
                Pilot Mode
              </h3>
              <p className="text-xs text-slate-400 leading-relaxed">
-               You are currently monitoring the <span className="text-white font-bold">{activeCategory.toUpperCase()}</span> pilot phase. 
+               You are currently monitoring the <span className="text-white font-bold">{category.toUpperCase()}</span> pilot phase. 
                All dispatch success metrics for REAL deliveries are being audited for the production launch.
              </p>
              <button className="w-full mt-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors">

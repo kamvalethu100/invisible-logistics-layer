@@ -201,10 +201,12 @@ export async function initDb() {
     // Column might already exist
   }
   try {
-    await db.exec("ALTER TABLE deliveries ADD COLUMN data_category TEXT DEFAULT 'real' CHECK(data_category IN ('real', 'test', 'simulated'))");
-  } catch (e) {
-    // Column might already exist
-  }
+    await db.exec("ALTER TABLE deliveries ADD COLUMN payment_status TEXT DEFAULT 'pending'");
+  } catch (e) {}
+
+  try {
+    await db.exec("ALTER TABLE payments ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+  } catch (e) {}
 
   return db;
 }

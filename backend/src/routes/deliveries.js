@@ -14,6 +14,12 @@ const deliveryCreateSchema = z.object({
   insurance_opt_in: z.boolean().optional().default(false)
 });
 
+const deliveryInitiateSchema = z.object({
+  payment_method: z.string().default('EFT'),
+  reference: z.string().optional(),
+  metadata: z.record(z.any()).optional()
+});
+
 // Refined pricing logic for Sprint 4 - Categorized Isolation & Multi-Region
 async function calculatePrice(db, distance, packageSize, urgency, dataCategory = 'real', countryCode = 'ZA', insuranceOptIn = false) {
   const baseFees = { small: 5, medium: 10, large: 20 };
@@ -203,45 +209,24 @@ export async function deliveryRoutes(fastify, options) {
       const insurance_premium = data.insurance_opt_in ? 10 : 0;
       
       const id = uuidv4();
-      const status = 'pending';
-
-      // Use RevenueService for atomic deduction and recording
-      await fastify.revenue.deductDeliveryFee(db, request.user.id, id, price, currency_code, data_category);
+      const status = 'PENDING_PAYMENT_VERIFICATION';
+      const payment_status = 'pending';
 
       await db.run(
         `INSERT INTO deliveries (
           id, business_id, status, pickup_address, pickup_lat, pickup_lng, 
-          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price, data_category, country_code, currency_code, region, insurance_opt_in, insurance_premium
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          dropoff_address, dropoff_lat, dropoff_lng, package_size, urgency, price, data_category, country_code, currency_code, region, insurance_opt_in, insurance_premium, payment_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id, request.user.id, status, data.pickup_address, data.pickup_lat, data.pickup_lng,
-          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price, data_category, country_code, currency_code, region, data.insurance_opt_in ? 1 : 0, insurance_premium
+          data.dropoff_address, data.dropoff_lat, data.dropoff_lng, data.package_size, data.urgency, price, data_category, country_code, currency_code, region, data.insurance_opt_in ? 1 : 0, insurance_premium, payment_status
         ]
       );
 
       const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
       
-      // Trigger matching with prioritization for 'High Intent' (Premium) customers
-      const searchRadius = user.is_premium ? 10 : 5;
-      const notifyCount = user.is_premium ? 10 : 3;
-
-      const nearbyDrivers = findNearbyDrivers(data.pickup_lat, data.pickup_lng, searchRadius, null, data_category, country_code);
+      console.log(`[EFT-Only] Created delivery ${id} in PENDING_PAYMENT_VERIFICATION state.`);
       
-      if (nearbyDrivers.length > 0) {
-        // Notify prioritized number of drivers
-        nearbyDrivers.slice(0, notifyCount).forEach(driver => {
-          fastify.io.to(driver.socketId).emit('job_offer', {
-              ...delivery,
-              priority: user.is_premium ? 'high' : 'standard'
-          });
-        });
-        
-        console.log(`[Matching] Dispatched delivery ${id} to ${Math.min(nearbyDrivers.length, notifyCount)} drivers (Premium: ${user.is_premium})`);
-      } else {
-        // Log failure: no drivers found
-        await logFailure(db, 'matching_failure', id, 'no_drivers_nearby', data_category, { lat: data.pickup_lat, lng: data.pickup_lng });
-      }
-
       return delivery;
     } catch (error) {
       return reply.status(400).send({ error: error.message });
@@ -317,6 +302,110 @@ export async function deliveryRoutes(fastify, options) {
     }
 
     return delivery;
+  });
+
+  // Initiate payment for a delivery (EFT Gate)
+  fastify.patch('/:id/initiate-payment', async (request, reply) => {
+    try {
+      const { id } = request.params;
+      const { payment_method, reference, metadata } = deliveryInitiateSchema.parse(request.body);
+      
+      const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+
+      if (!delivery) {
+        return reply.status(404).send({ error: 'Delivery not found' });
+      }
+
+      if (request.user.role === 'business' && delivery.business_id !== request.user.id) {
+        return reply.status(403).send({ error: 'Unauthorized' });
+      }
+
+      if (delivery.status !== 'PENDING_PAYMENT_VERIFICATION') {
+        return reply.status(400).send({ error: `Payment cannot be initiated for delivery in ${delivery.status} status` });
+      }
+
+      // Business Logic: Check and deduct balance upon initiation
+      const user = await db.get('SELECT balance, is_premium FROM users WHERE id = ?', [request.user.id]);
+      if (user.balance < delivery.price) {
+          return reply.status(402).send({ 
+              error: 'Insufficient balance', 
+              required: delivery.price, 
+              current: user.balance,
+              message: 'Please top up your account to initiate payment for this delivery.' 
+          });
+      }
+
+      // Atomically deduct fee
+      await fastify.revenue.deductDeliveryFee(db, request.user.id, id, delivery.price, delivery.currency_code, delivery.data_category);
+
+      await db.run(
+        'UPDATE deliveries SET payment_status = "initiated", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [id]
+      );
+
+      // Log event with EFT metadata
+      await logEvent(db, 'payment_initiated', request.user.id, id, delivery.data_category, {
+          payment_method,
+          reference,
+          ...metadata
+      });
+
+      const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+      
+      console.log(`[EFT-Gate] Payment initiated for delivery ${id}. Awaiting manual verification.`);
+
+      return updatedDelivery;
+    } catch (error) {
+      return reply.status(400).send({ error: error.message });
+    }
+  });
+
+  // Admin: Verify payment and unlock delivery (Manual Verification Gate)
+  fastify.patch('/:id/verify-payment', async (request, reply) => {
+    if (request.user.role !== 'admin') {
+      return reply.status(403).send({ error: 'Only admins can verify payments' });
+    }
+
+    const { id } = request.params;
+    const delivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+
+    if (!delivery) {
+      return reply.status(404).send({ error: 'Delivery not found' });
+    }
+
+    if (delivery.status !== 'PENDING_PAYMENT_VERIFICATION') {
+      return reply.status(400).send({ error: `Cannot verify payment for delivery in ${delivery.status} status` });
+    }
+
+    // Move to pending (Active)
+    await db.run(
+      'UPDATE deliveries SET status = "pending", payment_status = "verified", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [id]
+    );
+
+    const updatedDelivery = await db.get('SELECT * FROM deliveries WHERE id = ?', [id]);
+    const business = await db.get('SELECT is_premium FROM users WHERE id = ?', [delivery.business_id]);
+
+    // Trigger matching engine
+    const searchRadius = business.is_premium ? 10 : 5;
+    const notifyCount = business.is_premium ? 10 : 3;
+
+    const nearbyDrivers = findNearbyDrivers(delivery.pickup_lat, delivery.pickup_lng, searchRadius, null, delivery.data_category, delivery.country_code);
+    
+    if (nearbyDrivers.length > 0) {
+      nearbyDrivers.slice(0, notifyCount).forEach(driver => {
+        fastify.io.to(driver.socketId).emit('job_offer', {
+            ...updatedDelivery,
+            priority: business.is_premium ? 'high' : 'standard'
+        });
+      });
+      console.log(`[Admin-Verify] Dispatched delivery ${id} to ${Math.min(nearbyDrivers.length, notifyCount)} drivers after manual verification.`);
+    }
+
+    // Notify business via socket
+    fastify.io.to(`delivery_${id}`).emit('status_update', updatedDelivery);
+
+    return updatedDelivery;
   });
 
   // Accept delivery (Driver)

@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/lib/utils';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
 
 export default function NewDelivery() {
@@ -13,6 +14,7 @@ export default function NewDelivery() {
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [packageSize, setPackageSize] = useState<'small' | 'medium' | 'large'>('small');
   const [urgency, setUrgency] = useState<'standard' | 'express'>('standard');
+  const [insuranceOptIn, setInsuranceOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -28,7 +30,7 @@ export default function NewDelivery() {
     const surgeMultiplier = 1.0; 
     
     const price = (baseFees[packageSize] + (distance * ratePerKm)) * surgeMultiplier * urgencyMultiplier;
-    return price.toFixed(2);
+    return insuranceOptIn ? price + 5 : price;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,11 +154,29 @@ export default function NewDelivery() {
           </div>
         </div>
 
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input 
+              type="checkbox" 
+              checked={insuranceOptIn}
+              onChange={(e) => setInsuranceOptIn(e.target.checked)}
+              className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+            />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-600" />
+                Add Goods Insurance (+{formatCurrency(5, user?.currency_code)})
+              </p>
+              <p className="text-xs text-gray-500">Protect your package against damage or loss up to {formatCurrency(1000, user?.currency_code)}.</p>
+            </div>
+          </label>
+        </div>
+
         <div className="bg-blue-600 p-6 rounded-xl shadow-lg text-white">
           <div className="flex justify-between items-center mb-4">
             <span className="text-blue-100 font-medium">Estimated Price</span>
             <div className="text-right">
-               <span className="text-2xl font-bold">R {calculatePrice()}</span>
+               <span className="text-2xl font-bold">{formatCurrency(calculatePrice(), user?.currency_code)}</span>
                <p className="text-[10px] text-blue-200 uppercase font-bold tracking-tighter">Normal Pricing Active</p>
             </div>
           </div>
@@ -173,7 +193,7 @@ export default function NewDelivery() {
             )}
           </Button>
           <p className="text-xs text-center mt-3 text-blue-100">
-            Drivers will be notified instantly once you confirm.
+            Every delivery requires manual EFT verification before driver activation.
           </p>
         </div>
       </form>

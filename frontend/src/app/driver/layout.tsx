@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Home, ClipboardList, TrendingUp, User, LogOut } from 'lucide-react';
+import { Home, ClipboardList, TrendingUp, User, LogOut, Shield, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { usePathname } from 'next/navigation';
@@ -30,6 +30,21 @@ export default function DriverLayout({
       <header className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10 flex justify-between items-center">
         <h1 className="text-xl font-bold text-green-600 tracking-tight">FlowGrid Driver</h1>
         <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end mr-2">
+            <div className="flex items-center gap-1">
+              {user.is_premium && <Crown className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
+              <span className="text-xs font-bold text-gray-900">{user.name}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className={cn(
+                "text-[8px] font-black uppercase px-1 py-0.5 rounded flex items-center gap-0.5 border",
+                user.verification_status === 'VERIFIED' ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-400 border-gray-200"
+              )}>
+                <Shield className={cn("w-2 h-2", user.verification_status === 'VERIFIED' ? "text-green-600" : "text-gray-400")} />
+                {user.verification_status}
+              </span>
+            </div>
+          </div>
           <div className="flex items-center">
             <span className="relative flex h-3 w-3 mr-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

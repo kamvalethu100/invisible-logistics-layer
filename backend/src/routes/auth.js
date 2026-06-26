@@ -46,11 +46,13 @@ export async function authRoutes(fastify, options) {
         }
       }
 
-      await db.run(
+      const result = await db.run(
         `INSERT INTO users (id, email, password_hash, role, name, phone, vehicle_type, status, data_category, country_code, currency_code, region, referral_code, referred_by, balance)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [id, email, hashedPassword, role, name, phone || null, vehicle_type || null, 'offline', data_category, country_code, currency_code, region, myReferralCode, referredBy, 0]
       );
+
+      console.log(`[Auth] User registered successfully: ${email} (ID: ${id}, RowID: ${result.lastID})`);
 
       const token = fastify.jwt.sign({ 
         id, email, role, data_category, country_code, currency_code, region,
@@ -61,6 +63,7 @@ export async function authRoutes(fastify, options) {
         verification_status: 'PENDING', is_premium: 0, referral_code: myReferralCode
       } };
     } catch (error) {
+      console.error(`[Auth] Registration failed for ${request.body?.email}:`, error.message);
       if (error.code === 'SQLITE_CONSTRAINT') {
         return reply.status(400).send({ error: 'Email already exists' });
       }

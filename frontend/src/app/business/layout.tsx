@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, PlusCircle, History, Settings, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, History, Settings, LogOut, User, Shield, Crown } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { usePathname } from 'next/navigation';
@@ -54,8 +54,27 @@ export default function BusinessLayout({
               <User className="w-4 h-4" />
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1">
+                {user.name}
+                {user.is_premium && <Crown className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
+              </p>
+              <div className="flex flex-col">
+                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                   <span className={cn(
+                     "text-[8px] font-black uppercase px-1 py-0.5 rounded flex items-center gap-0.5 border",
+                     user.verification_status === 'VERIFIED' ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-400 border-gray-200"
+                   )}>
+                     <Shield className={cn("w-2 h-2", user.verification_status === 'VERIFIED' ? "text-green-600" : "text-gray-400")} />
+                     {user.verification_status}
+                   </span>
+                   {user.is_premium && (
+                     <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                       PREMIUM
+                     </span>
+                   )}
+                </div>
+              </div>
             </div>
           </div>
           <button 
