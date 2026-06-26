@@ -1,0 +1,249 @@
+nohup: ignoring input
+
+> invisible-logistics-backend@1.0.0 start
+> node src/index.js
+
+◇ injected env (2) from .env // tip: ⌘ enable debugging { debug: true }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+[MatchingLoop] Initializing Persistent Matching Retry Loop...
+{"level":30,"time":1781520442202,"pid":441783,"hostname":"e2b.local","msg":"Server listening at http://127.0.0.1:3002"}
+Server listening on http://0.0.0.0:3002
+{"level":30,"time":1781520442203,"pid":441783,"hostname":"e2b.local","msg":"Server listening at http://169.254.0.21:3002"}
+[MatchingLoop] Found 94 pending deliveries and 20 online verified drivers in DB.
+[MatchingLoop] Fallback matching for job 6b5f2518-9ea6-4fc6-a013-a3401e6618e8: Found 9 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job 6b5f2518-9ea6-4fc6-a013-a3401e6618e8 to driver 39190998-e652-4a10-8f1b-c1d947a34637 to clear backlog.
+[MatchingLoop] Fallback matching for job d8a2523d-1484-4922-b06d-3b0a1ad4c8e0: Found 9 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job d8a2523d-1484-4922-b06d-3b0a1ad4c8e0 to driver 39190998-e652-4a10-8f1b-c1d947a34637 to clear backlog.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Found 92 pending deliveries and 19 online verified drivers in DB.
+[MatchingLoop] Fallback matching for job f65d95ac-6a3d-443c-a30f-a58be8286fc9: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job f65d95ac-6a3d-443c-a30f-a58be8286fc9 to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job 74feb49a-56fc-4803-b901-c2ca4504d613: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job 74feb49a-56fc-4803-b901-c2ca4504d613 to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job c75a3208-819d-4010-961b-6ea2ef369e7a: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job c75a3208-819d-4010-961b-6ea2ef369e7a to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job 7beae311-78a5-4b51-9cbb-b7ae0ac9330d: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job 7beae311-78a5-4b51-9cbb-b7ae0ac9330d to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job d70b6a02-daef-47b5-8056-57aefbafa5bd: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job d70b6a02-daef-47b5-8056-57aefbafa5bd to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job b89d862b-8767-4f41-b820-5918c23a3790: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job b89d862b-8767-4f41-b820-5918c23a3790 to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job 90960813-9170-4e73-965e-4fd938920536: Found 8 regional drivers in johannesburg.
+[MatchingLoop] AUTO-ASSIGNING job 90960813-9170-4e73-965e-4fd938920536 to driver 9bdfac4f-96eb-4f14-bfb4-7173d3cf4bce to clear backlog.
+[MatchingLoop] Fallback matching for job 70bb5c9e-3631-479b-8634-6ef50d76bc9e: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 70bb5c9e-3631-479b-8634-6ef50d76bc9e to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 6913b050-58ee-4d97-bea6-a2802dce1765: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 6913b050-58ee-4d97-bea6-a2802dce1765 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job cfca32d0-f353-44ce-9a3e-f7b92053d138: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job cfca32d0-f353-44ce-9a3e-f7b92053d138 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 2cbfd4e4-8e98-4cd0-b578-c005ab66be3a: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 2cbfd4e4-8e98-4cd0-b578-c005ab66be3a to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 3cff845e-ea99-4a71-bfc9-18f1ef526b7a: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 3cff845e-ea99-4a71-bfc9-18f1ef526b7a to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 5a17c3c3-1d07-4317-a3f8-e7a52e6b2946: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 5a17c3c3-1d07-4317-a3f8-e7a52e6b2946 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 2845b34b-ad3c-4e14-969c-2e9604f86783: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 2845b34b-ad3c-4e14-969c-2e9604f86783 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job ff609ec1-3075-479f-9734-1ea417a35fc8: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job ff609ec1-3075-479f-9734-1ea417a35fc8 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 08db861f-37de-4f68-a5e9-4f1839d4e897: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 08db861f-37de-4f68-a5e9-4f1839d4e897 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job f4fee8fd-ef58-4575-af74-5ed3d76afef4: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job f4fee8fd-ef58-4575-af74-5ed3d76afef4 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 06823d28-0ad4-4359-800f-fcb6da65ac7e: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 06823d28-0ad4-4359-800f-fcb6da65ac7e to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 32b05404-b439-42e2-be9f-b9ef442be1e6: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 32b05404-b439-42e2-be9f-b9ef442be1e6 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 5844f59d-f22f-4bdd-b3f6-827824aa8e4e: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 5844f59d-f22f-4bdd-b3f6-827824aa8e4e to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 13dc06d4-7535-4e11-9b9d-f743b9ca4a99: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 13dc06d4-7535-4e11-9b9d-f743b9ca4a99 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 6dc69a44-26d3-4781-8c5f-f3c374444e66: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 6dc69a44-26d3-4781-8c5f-f3c374444e66 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 8b117c75-1a4a-4b8b-9d7a-4dfbd2ea4ccf: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 8b117c75-1a4a-4b8b-9d7a-4dfbd2ea4ccf to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job c4733826-370e-432d-b0af-49824d922697: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job c4733826-370e-432d-b0af-49824d922697 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 316448df-2eb3-475a-ac56-fb4a23c5b603: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 316448df-2eb3-475a-ac56-fb4a23c5b603 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job a7710f6e-0025-4a1f-bcc7-3e8e49373a93: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job a7710f6e-0025-4a1f-bcc7-3e8e49373a93 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job a6e8add3-43d5-4141-b239-7a26237d79d7: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job a6e8add3-43d5-4141-b239-7a26237d79d7 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 714b4ca9-5ea1-4b1e-bedf-0888335559a3: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 714b4ca9-5ea1-4b1e-bedf-0888335559a3 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 3d7db4b0-8703-4b84-a0f2-29d8bc3907d9: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 3d7db4b0-8703-4b84-a0f2-29d8bc3907d9 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job b43f836d-c0b4-43e3-bc17-4630c5e66486: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job b43f836d-c0b4-43e3-bc17-4630c5e66486 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 0227994e-5627-4f1f-bc00-e7c848d987ec: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 0227994e-5627-4f1f-bc00-e7c848d987ec to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 3b5ef9a6-abcb-409f-8fda-9e55b953b482: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 3b5ef9a6-abcb-409f-8fda-9e55b953b482 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job b0248090-23fc-4ca1-b394-c19048b43d21: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job b0248090-23fc-4ca1-b394-c19048b43d21 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 498efddb-390a-497f-89f1-2aeb89e4d870: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 498efddb-390a-497f-89f1-2aeb89e4d870 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job b2891947-0e3f-46c2-a659-6045361fe2e7: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job b2891947-0e3f-46c2-a659-6045361fe2e7 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 8cf9cc47-a88e-4f1f-8f2c-8def7a221b60: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 8cf9cc47-a88e-4f1f-8f2c-8def7a221b60 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 9b3a23dc-c994-463f-bf21-e12fa5665afb: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 9b3a23dc-c994-463f-bf21-e12fa5665afb to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 1c21f646-c39d-4ca4-95a3-3a7950066e60: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 1c21f646-c39d-4ca4-95a3-3a7950066e60 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 405a8296-0105-418f-a00e-ce0adb34d58f: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 405a8296-0105-418f-a00e-ce0adb34d58f to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 7ff97a66-8e8c-47b7-8ac2-9b1d62712317: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 7ff97a66-8e8c-47b7-8ac2-9b1d62712317 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 3dd524f2-6ab5-43cb-8de8-7a6910c4e43c: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 3dd524f2-6ab5-43cb-8de8-7a6910c4e43c to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 9af09d1c-d3e6-468b-9278-c19e815df61b: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 9af09d1c-d3e6-468b-9278-c19e815df61b to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job aacea30f-7414-42db-b907-0acc5dc2a8ed: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job aacea30f-7414-42db-b907-0acc5dc2a8ed to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 71458579-c551-4e90-bf99-603d3254ff40: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 71458579-c551-4e90-bf99-603d3254ff40 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 7db44c1a-ceb6-4f1c-9862-1cc1c0ad59d5: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 7db44c1a-ceb6-4f1c-9862-1cc1c0ad59d5 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 1d9617ad-b882-4e9e-a419-94daa1c99597: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 1d9617ad-b882-4e9e-a419-94daa1c99597 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 225deec2-6cde-43ec-909e-4f4224465246: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 225deec2-6cde-43ec-909e-4f4224465246 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 68daef54-21da-429a-88c9-0d9152d3fb03: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 68daef54-21da-429a-88c9-0d9152d3fb03 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 2af79e9c-8597-496e-908b-8398f1f8d7a3: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 2af79e9c-8597-496e-908b-8398f1f8d7a3 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 24335143-7544-4e9a-a690-b1dcd5838e68: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 24335143-7544-4e9a-a690-b1dcd5838e68 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 9749c1da-3c48-4661-97b4-bd7d7e0de22c: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 9749c1da-3c48-4661-97b4-bd7d7e0de22c to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job a8720cc0-5950-4c86-bc17-596b13f6f237: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job a8720cc0-5950-4c86-bc17-596b13f6f237 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job be746697-1774-429d-b8f0-6752dfec68a0: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job be746697-1774-429d-b8f0-6752dfec68a0 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 318ab858-218e-43eb-b374-77551ab646bc: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 318ab858-218e-43eb-b374-77551ab646bc to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 019e749a-6786-446d-8244-8b16a7d2bcb3: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 019e749a-6786-446d-8244-8b16a7d2bcb3 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 4961fa15-12b3-46d7-9fb8-06ad23debf8a: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 4961fa15-12b3-46d7-9fb8-06ad23debf8a to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job d7cc032c-9064-488d-a64e-91675571f7bb: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job d7cc032c-9064-488d-a64e-91675571f7bb to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job a0be4110-1583-4d76-9f36-8ace03e1e9ff: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job a0be4110-1583-4d76-9f36-8ace03e1e9ff to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 990fa8fd-05f5-4bbd-8659-9199e933051f: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 990fa8fd-05f5-4bbd-8659-9199e933051f to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 719d8f0f-0556-46d7-aca8-528db79e0795: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 719d8f0f-0556-46d7-aca8-528db79e0795 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job ed621d72-ec95-414e-b206-16782aad0f67: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job ed621d72-ec95-414e-b206-16782aad0f67 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job e93057de-bd6a-44aa-993c-5e8e1e250b26: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job e93057de-bd6a-44aa-993c-5e8e1e250b26 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job e38bf0e8-baee-4687-b3c0-8b4891b83ed9: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job e38bf0e8-baee-4687-b3c0-8b4891b83ed9 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job d4518352-7fd7-4bd2-aab3-b95b23aa03c1: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job d4518352-7fd7-4bd2-aab3-b95b23aa03c1 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 098d5d6f-8793-4e92-8cd0-912eccc95049: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 098d5d6f-8793-4e92-8cd0-912eccc95049 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job c58b23bf-c096-4644-a731-11d31675babd: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job c58b23bf-c096-4644-a731-11d31675babd to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job f614bcf8-eb29-4a12-abdb-985d3c726fcc: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job f614bcf8-eb29-4a12-abdb-985d3c726fcc to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 88fce0f2-5c9c-4d3c-8e99-0f21104eb931: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 88fce0f2-5c9c-4d3c-8e99-0f21104eb931 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 02fd1cd9-6737-4403-bac8-95915354167a: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 02fd1cd9-6737-4403-bac8-95915354167a to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job e725701f-0e6d-4a75-b295-704fb5b952dc: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job e725701f-0e6d-4a75-b295-704fb5b952dc to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job ad7d8013-e559-4b02-8c3e-fd8da293513d: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job ad7d8013-e559-4b02-8c3e-fd8da293513d to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job b6bb2261-c336-437e-a2b6-6f41b89fce28: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job b6bb2261-c336-437e-a2b6-6f41b89fce28 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 82a127ca-2bf3-40e7-b87a-f5394603981f: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 82a127ca-2bf3-40e7-b87a-f5394603981f to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 9728ff4d-a76e-4188-bc2e-c80470377689: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 9728ff4d-a76e-4188-bc2e-c80470377689 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job dd1b5926-1e05-4e9d-abd1-2ed075ef5650: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job dd1b5926-1e05-4e9d-abd1-2ed075ef5650 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 5150a7f1-9b67-48e3-8a59-d60597886e19: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 5150a7f1-9b67-48e3-8a59-d60597886e19 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 002eef9a-8299-4e09-8219-da95a437cc04: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 002eef9a-8299-4e09-8219-da95a437cc04 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job c0027877-54a6-4a92-8db7-75e1b4df7d7c: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job c0027877-54a6-4a92-8db7-75e1b4df7d7c to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 6fafcea3-c84d-4d98-abf1-55e8eb4c24d9: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 6fafcea3-c84d-4d98-abf1-55e8eb4c24d9 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 48e8be76-9f5b-480a-bc25-5786f82abc29: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 48e8be76-9f5b-480a-bc25-5786f82abc29 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 254c4889-823b-4e79-8721-2c82f466de18: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 254c4889-823b-4e79-8721-2c82f466de18 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 4b4ba60b-5719-474f-9a76-f634f12134d0: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 4b4ba60b-5719-474f-9a76-f634f12134d0 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 815d6dc3-aa66-4be6-8b14-4ad95b40600b: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 815d6dc3-aa66-4be6-8b14-4ad95b40600b to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 83f1fb44-82b6-4a14-868e-8172278f0292: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 83f1fb44-82b6-4a14-868e-8172278f0292 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 58f21175-125e-4b1a-acc5-ddbf33c52700: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 58f21175-125e-4b1a-acc5-ddbf33c52700 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 53ee3ac3-1459-448e-bbae-e9a1d5fa23aa: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 53ee3ac3-1459-448e-bbae-e9a1d5fa23aa to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 692b406a-f0b0-4581-a5ce-07bfff896757: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 692b406a-f0b0-4581-a5ce-07bfff896757 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 14e17442-e6dd-41bc-b4d1-018fe5fb7543: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 14e17442-e6dd-41bc-b4d1-018fe5fb7543 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 6657a759-98a8-4209-a730-9aecfeb590e1: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 6657a759-98a8-4209-a730-9aecfeb590e1 to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job 2fc4bdce-610a-4999-bef2-5ed6de339b4a: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job 2fc4bdce-610a-4999-bef2-5ed6de339b4a to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job ec3876f3-673a-4c35-bd78-8df6ed13c04e: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job ec3876f3-673a-4c35-bd78-8df6ed13c04e to driver nrb-drv-001 to clear backlog.
+[MatchingLoop] Fallback matching for job c0f83638-10ed-4e3c-8a99-3f498838ccc0: Found 10 regional drivers in nairobi.
+[MatchingLoop] AUTO-ASSIGNING job c0f83638-10ed-4e3c-8a99-3f498838ccc0 to driver nrb-drv-001 to clear backlog.
+{"level":30,"time":1782288477916,"pid":441783,"hostname":"e2b.local","reqId":"req-1","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":34130},"msg":"incoming request"}
+{"level":30,"time":1782288478158,"pid":441783,"hostname":"e2b.local","reqId":"req-1","res":{"statusCode":200},"responseTime":241.3604920208454,"msg":"request completed"}
+{"level":30,"time":1782289054485,"pid":441783,"hostname":"e2b.local","reqId":"req-2","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":48164},"msg":"incoming request"}
+{"level":30,"time":1782289054576,"pid":441783,"hostname":"e2b.local","reqId":"req-2","res":{"statusCode":200},"responseTime":90.68265599012375,"msg":"request completed"}
+{"level":30,"time":1782289111321,"pid":441783,"hostname":"e2b.local","reqId":"req-3","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":36660},"msg":"incoming request"}
+{"level":30,"time":1782289111324,"pid":441783,"hostname":"e2b.local","reqId":"req-3","res":{"statusCode":400},"responseTime":2.2956319749355316,"msg":"request completed"}
+{"level":30,"time":1782289117100,"pid":441783,"hostname":"e2b.local","reqId":"req-4","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":41530},"msg":"incoming request"}
+{"level":30,"time":1782289117184,"pid":441783,"hostname":"e2b.local","reqId":"req-4","res":{"statusCode":200},"responseTime":83.47004997730255,"msg":"request completed"}
+{"level":30,"time":1782377217866,"pid":441783,"hostname":"e2b.local","reqId":"req-5","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":33210},"msg":"incoming request"}
+{"level":30,"time":1782377217956,"pid":441783,"hostname":"e2b.local","reqId":"req-5","res":{"statusCode":200},"responseTime":90.17008900642395,"msg":"request completed"}
+{"level":30,"time":1782377380157,"pid":441783,"hostname":"e2b.local","reqId":"req-6","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":42728},"msg":"incoming request"}
+{"level":30,"time":1782377380431,"pid":441783,"hostname":"e2b.local","reqId":"req-6","res":{"statusCode":400},"responseTime":273.5904569923878,"msg":"request completed"}
+{"level":30,"time":1782377382943,"pid":441783,"hostname":"e2b.local","reqId":"req-7","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":42744},"msg":"incoming request"}
+{"level":30,"time":1782377382944,"pid":441783,"hostname":"e2b.local","reqId":"req-7","res":{"statusCode":400},"responseTime":0.7343229949474335,"msg":"request completed"}
+{"level":30,"time":1782377386729,"pid":441783,"hostname":"e2b.local","reqId":"req-8","req":{"method":"POST","url":"/api/auth/register","host":"localhost:3002","remoteAddress":"127.0.0.1","remotePort":42748},"msg":"incoming request"}
+{"level":30,"time":1782377387469,"pid":441783,"hostname":"e2b.local","reqId":"req-8","res":{"statusCode":200},"responseTime":738.5789860188961,"msg":"request completed"}

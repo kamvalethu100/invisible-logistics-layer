@@ -1,0 +1,17 @@
+nohup: ignoring input
+
+> invisible-logistics-frontend@0.1.0 dev
+> next dev -p 3000
+
+▲ Next.js 16.2.5 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://169.254.0.21:3000
+✓ Ready in 452ms
+
+○ Compiling /auth/register ...
+ GET / 200 in 4.5s (next.js: 4.0s, application-code: 525ms)
+ GET / 200 in 4.6s (next.js: 3.1s, application-code: 1518ms)
+ GET /auth/register 200 in 5.7s (next.js: 5.6s, application-code: 121ms)
+ GET / 200 in 165ms (next.js: 4ms, application-code: 161ms)
+ GET / 200 in 68ms (next.js: 6ms, application-code: 62ms)
+ GET / 200 in 56ms (next.js: 6ms, application-code: 50ms)
