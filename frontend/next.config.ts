@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
-  output: 'standalone',
+    // any eslint-specific options
+  output: 'standalone', // Top-level setting
 },
 
 export default nextConfig;
