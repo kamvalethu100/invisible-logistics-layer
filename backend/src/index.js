@@ -4,7 +4,12 @@ import fastifyCors from '@fastify/cors';
 import { initDb } from './db.js';
 import { authRoutes } from './routes/auth.js';
 import { deliveryRoutes } from './routes/deliveries.js';
+import { leadRoutes } from './routes/leads.js';
+import { verificationRoutes } from './routes/verification.js';
+import { paymentRoutes } from './routes/payments.js';
+import { notificationRoutes } from './routes/notifications.js';
 import { initSockets } from './sockets.js';
+import { startMatchingLoop } from './utils/matching.js';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -66,8 +71,15 @@ const start = async () => {
     const io = await initSockets(fastify);
     fastify.decorate('io', io);
 
+    // Start Persistent Matching Retry Loop
+    startMatchingLoop(fastify);
+
     fastify.register(authRoutes, { prefix: '/api/auth' });
     fastify.register(deliveryRoutes, { prefix: '/api/deliveries' });
+    fastify.register(leadRoutes, { prefix: '/api/leads' });
+    fastify.register(verificationRoutes, { prefix: '/api/verification' });
+    fastify.register(paymentRoutes, { prefix: '/api/payments' });
+    fastify.register(notificationRoutes, { prefix: '/api/notifications' });
 
     await fastify.listen({ port: process.env.PORT || 3000, host: '0.0.0.0' });
     console.log(`Server listening on http://0.0.0.0:${fastify.server.address().port}`);

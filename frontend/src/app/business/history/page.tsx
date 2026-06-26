@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { History, Search, Filter, MapPin, Calendar, Loader2 } from 'lucide-react';
+import { History, Search, Filter, MapPin, Calendar, Loader2, ArrowDownCircle } from 'lucide-react';
+import { PaymentHistory } from '@/components/ui/PaymentHistory';
+import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { DataCategoryBadge, DataCategory } from '@/components/ui/DataCategoryBadge';
@@ -136,7 +138,7 @@ export default function BusinessHistory() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                      R {item.price.toFixed(2)}
+                      {formatCurrency(item.price, user?.currency_code)}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -152,6 +154,8 @@ export default function BusinessHistory() {
           </table>
         </div>
       </div>
+
+      <PaymentHistory />
     </div>
   );
 }

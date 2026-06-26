@@ -1,0 +1,38 @@
+nohup: ignoring input
+
+> invisible-logistics-frontend@0.1.0 dev
+> next dev -p 3001
+
+▲ Next.js 16.2.5 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://169.254.0.21:3001
+✓ Ready in 2.7s
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+○ Compiling / ...
+ GET / 200 in 11.2s (next.js: 10.8s, application-code: 315ms)
+ GET / 200 in 62ms (next.js: 7ms, application-code: 54ms)
+ GET /business/dashboard 200 in 1786ms (next.js: 1697ms, application-code: 88ms)
+ GET / 200 in 66ms (next.js: 5ms, application-code: 62ms)
+ GET / 200 in 77ms (next.js: 9ms, application-code: 67ms)
+ GET / 200 in 72ms (next.js: 4ms, application-code: 68ms)
+⚠ Blocked cross-origin request to Next.js dev resource /_next/webpack-hmr from "3001-iarjdjnu28x0mmfxp53y5.e2b.app".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['3001-iarjdjnu28x0mmfxp53y5.e2b.app'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET / 200 in 45ms (next.js: 3ms, application-code: 42ms)
+ GET / 200 in 131ms (next.js: 4ms, application-code: 127ms)
+ GET / 200 in 245ms (next.js: 27ms, application-code: 218ms)
+ GET / 200 in 57ms (next.js: 3ms, application-code: 53ms)
+ GET / 200 in 50ms (next.js: 3ms, application-code: 48ms)

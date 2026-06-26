@@ -37,11 +37,18 @@ export async function initSockets(fastify) {
         lat: null,
         lng: null,
         status: 'online',
-        data_category: socket.user.data_category
+        data_category: socket.user.data_category,
+        country_code: socket.user.country_code
       });
       
       // Update driver status in DB
       fastify.db.run('UPDATE users SET status = "online" WHERE id = ?', [socket.user.id]);
+    }
+
+    // Join country-specific room for broadcasts
+    if (socket.user.country_code) {
+      socket.join(`country_${socket.user.country_code}`);
+      console.log(`User ${socket.user.id} joined country room: ${socket.user.country_code}`);
     }
 
     // Driver location update
@@ -121,13 +128,14 @@ export async function updateDriverStatus(fastify, driverId, status) {
 }
 
 // Function to find nearby drivers
-export function findNearbyDrivers(lat, lng, radiusKm = 5, vehicleType = null, category = 'real') {
+export function findNearbyDrivers(lat, lng, radiusKm = 5, vehicleType = null, category = 'real', countryCode = 'ZA') {
   const nearby = [];
   
   for (const [driverId, data] of onlineDrivers.entries()) {
     if (data.lat === null || data.lng === null) continue;
     if (data.status !== 'online') continue;
     if (data.data_category !== category) continue; // Strict separation
+    if (data.country_code !== countryCode) continue; // Geographic isolation
 
     const distance = getDistance(lat, lng, data.lat, data.lng);
     if (distance <= radiusKm) {

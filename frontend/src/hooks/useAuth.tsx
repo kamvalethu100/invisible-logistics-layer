@@ -10,6 +10,10 @@ interface User {
   role: 'business' | 'driver' | 'admin';
   name: string;
   data_category: 'real' | 'test' | 'simulated';
+  verification_status: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  is_premium: boolean;
+  country_code: string;
+  currency_code: string;
 }
 
 interface AuthContextType {
